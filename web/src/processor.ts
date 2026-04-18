@@ -43,8 +43,17 @@ export async function runProcessing(): Promise<void> {
       await yieldToUI();
 
       let lastStage = 'start';
+      let stageStart = performance.now();
+      const trackStage = (s: string) => {
+        const elapsed = performance.now() - stageStart;
+        if (lastStage !== 'start') {
+          store.appendLog(`    ${lastStage}: ${elapsed.toFixed(0)}ms`);
+        }
+        lastStage = s;
+        stageStart = performance.now();
+      };
       try {
-        const result = await processPage(pageNum - 1, bitmap, config, s => { lastStage = s; });
+        const result = await processPage(pageNum - 1, bitmap, config, trackStage);
         const numAnswered = [...result.detectedAnswers.values()].filter(s => s.size > 0).length;
         const markerNote = result.gridParams.markersUsed ? 'markers OK' : 'markers fallback';
         store.appendLog(`  page ${pageNum}: ${numAnswered} answers detected (${markerNote})`);

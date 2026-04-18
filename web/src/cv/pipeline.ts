@@ -19,20 +19,22 @@ export async function processPage(
   config: SheetConfig,
   onStage?: (stage: string) => void,
 ): Promise<PageResult> {
-  const stage = (name: string) => onStage?.(name);
-  stage('rasterToImageData');
+  const yieldTo = () => new Promise<void>(r => setTimeout(r, 0));
+  const stage = async (name: string) => { onStage?.(name); await yieldTo(); };
+
+  await stage('rasterToImageData');
   const imageData = bitmapToImageData(bitmap);
-  stage('orient');
+  await stage('orient');
   const { image: orientedData, orientationDetected } = orientImage(imageData);
-  stage('createOrientedBitmap');
+  await stage('createOrientedBitmap');
   const orientedBitmap = await createImageBitmap(orientedData);
-  stage('computeGrid');
+  await stage('computeGrid');
   const gridParams = computeGridParams(orientedData, config);
-  stage('analyzeBubbles');
+  await stage('analyzeBubbles');
   const { answers, flags } = analyzeBubbleGrid(orientedData, gridParams, config);
-  stage('cropName');
+  await stage('cropName');
   const nameCrop = await cropNameRegion(orientedData, config);
-  stage('done');
+  await stage('done');
 
   if (!orientationDetected) {
     flags.unshift({ message: 'Orientation markers not detected — orientation may be wrong' });
