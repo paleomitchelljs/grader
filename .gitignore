@@ -1,0 +1,51 @@
+# Real student data — never commit. Fictional fixtures live under examples/.
+samples/
+roster.csv
+*_roster.csv
+!examples/sample_roster.csv
+
+# Generated OMR outputs
+*_results.csv
+*_flags.txt
+*_key_summary.txt
+edited_results.csv
+key_overlays/
+debug_grid.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+venv/
+.venv/
+env/
+build/
+dist/
+
+# Node / web tooling
+node_modules/
+web/dist/
+web/.vite/
+*.log
+.pnpm-store/
+
+# LaTeX build artifacts
+latex/*.aux
+latex/*.log
+latex/*.out
+latex/*.synctex.gz
+latex/*.fdb_latexmk
+latex/*.fls
+latex/*.toc
+
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# Claude Code local artifacts
+.claude/

@@ -1,0 +1,8 @@
+pymupdf>=1.24.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+# Optional: pyzbar for QR code orientation detection (requires brew install zbar)
+# pyzbar>=0.1.9
+# Optional: pytesseract for student name OCR (requires brew install tesseract)
+# pytesseract>=0.3.10
