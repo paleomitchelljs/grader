@@ -3,6 +3,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   base: '/grader/',
   build: {
+    outDir: '../docs',
+    emptyOutDir: true,
     target: 'es2022',
     sourcemap: true,
     rollupOptions: {
