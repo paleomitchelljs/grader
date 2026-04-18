@@ -16,53 +16,57 @@ export type RenderedPage = {
   bitmap: ImageBitmap;
   width: number;
   height: number;
+  pageNum: number;
+  totalPages: number;
 };
 
 /**
- * Render every page of a PDF file to an ImageBitmap.
- * onProgress is called once per rendered page, with (pageIndex0Based, totalPages).
+ * Stream the pages of a PDF file one ImageBitmap at a time.
+ *
+ * Yielding rather than returning an array lets the caller process and free
+ * each page before the next is rasterized — peak memory stays near a single
+ * page (~15 MB at 200 DPI Letter) instead of scaling with class size.
  */
-export async function renderPdf(
+export async function* renderPdfPages(
   file: File,
-  opts: { dpi?: number; onProgress?: (done: number, total: number) => void } = {},
-): Promise<RenderedPage[]> {
-  const { dpi = 200, onProgress } = opts;
+  opts: { dpi?: number } = {},
+): AsyncGenerator<RenderedPage, void, void> {
+  const { dpi = 200 } = opts;
   const arrayBuffer = await file.arrayBuffer();
 
   const loadingTask = pdfjsLib.getDocument({
     data: arrayBuffer,
-    // Disable remote font fetches — we do not make network requests.
     disableFontFace: false,
     useSystemFonts: true,
     isEvalSupported: false,
   });
 
   const pdf = await loadingTask.promise;
-  const scale = dpi / 72; // 72 pt = 1 in, pdfjs uses pt at scale 1
-  const pages: RenderedPage[] = [];
+  const scale = dpi / 72;
+  const totalPages = pdf.numPages;
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale });
-    const canvas = new OffscreenCanvas(viewport.width, viewport.height);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Failed to get 2D context from OffscreenCanvas');
+  try {
+    for (let i = 1; i <= totalPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale });
+      const canvas = new OffscreenCanvas(viewport.width, viewport.height);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Failed to get 2D context from OffscreenCanvas');
 
-    await page.render({
-      canvasContext: ctx as unknown as CanvasRenderingContext2D,
-      viewport,
-      intent: 'print',
-    }).promise;
+      await page.render({
+        canvasContext: ctx as unknown as CanvasRenderingContext2D,
+        viewport,
+        intent: 'print',
+      }).promise;
 
-    const bitmap = canvas.transferToImageBitmap();
-    pages.push({ bitmap, width: viewport.width, height: viewport.height });
-    onProgress?.(i, pdf.numPages);
-
-    // Free per-page resources.
-    page.cleanup();
+      const bitmap = canvas.transferToImageBitmap();
+      page.cleanup();
+      yield { bitmap, width: viewport.width, height: viewport.height, pageNum: i, totalPages };
+    }
+  } finally {
+    // Release the parsed PDF structure as soon as the consumer is done (or bails).
+    pdf.destroy();
   }
-
-  return pages;
 }
 
 /**

@@ -6,11 +6,15 @@
  * store; this module is otherwise stateless.
  */
 
-import { renderPdf } from './pdf/load';
+import { renderPdfPages } from './pdf/load';
 import { cvReady } from './cv/opencv-loader';
 import { processPage } from './cv/pipeline';
 import { store } from './state';
 import type { PageResult } from './types';
+
+// Let the event loop run a task queue tick — paints progress, flushes log DOM,
+// and gives the tab a heartbeat so the browser doesn't decide it's hung.
+const yieldToUI = () => new Promise<void>(r => setTimeout(r, 0));
 
 export async function runProcessing(): Promise<void> {
   const { config, pdfFile } = store.state;
@@ -25,32 +29,33 @@ export async function runProcessing(): Promise<void> {
     await cvReady();
     store.appendLog('OpenCV ready.');
 
-    store.setProcessing({ kind: 'processing', message: 'Rasterizing PDF…', progress: 0 });
     store.appendLog(`Loading PDF: ${pdfFile.name} (${formatBytes(pdfFile.size)})`);
-    const rendered = await renderPdf(pdfFile, {
-      onProgress: (done, total) => {
-        store.setProcessing({
-          kind: 'processing',
-          message: `Rasterizing page ${done} of ${total}…`,
-          progress: (done / total) * 0.4,
-        });
-      },
-    });
-    store.appendLog(`Rendered ${rendered.length} page${rendered.length === 1 ? '' : 's'}.`);
+    store.setProcessing({ kind: 'processing', message: 'Opening PDF…', progress: 0 });
 
     const pages: PageResult[] = [];
-    for (let i = 0; i < rendered.length; i++) {
-      const { bitmap } = rendered[i]!;
+    for await (const rendered of renderPdfPages(pdfFile)) {
+      const { bitmap, pageNum, totalPages } = rendered;
       store.setProcessing({
         kind: 'processing',
-        message: `Processing page ${i + 1} of ${rendered.length}…`,
-        progress: 0.4 + (i / rendered.length) * 0.6,
+        message: `Processing page ${pageNum} of ${totalPages}…`,
+        progress: pageNum / totalPages,
       });
-      const result = await processPage(i, bitmap, config);
-      const numAnswered = [...result.detectedAnswers.values()].filter(s => s.size > 0).length;
-      const markerNote = result.gridParams.markersUsed ? 'markers OK' : 'markers fallback';
-      store.appendLog(`  page ${i + 1}: ${numAnswered} answers detected (${markerNote})`);
-      pages.push(result);
+      await yieldToUI();
+
+      try {
+        const result = await processPage(pageNum - 1, bitmap, config);
+        const numAnswered = [...result.detectedAnswers.values()].filter(s => s.size > 0).length;
+        const markerNote = result.gridParams.markersUsed ? 'markers OK' : 'markers fallback';
+        store.appendLog(`  page ${pageNum}: ${numAnswered} answers detected (${markerNote})`);
+        pages.push(result);
+      } finally {
+        // The raw rasterized bitmap is no longer needed — processPage already
+        // extracted its pixels. Release the GPU/memory backing immediately so
+        // peak memory stays at ~one page rather than scaling with class size.
+        bitmap.close();
+      }
+
+      await yieldToUI();
     }
 
     store.setPages(pages);
