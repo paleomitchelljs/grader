@@ -42,20 +42,28 @@ export async function runProcessing(): Promise<void> {
       });
       await yieldToUI();
 
+      let lastStage = 'start';
       try {
-        const result = await processPage(pageNum - 1, bitmap, config);
+        const result = await processPage(pageNum - 1, bitmap, config, s => { lastStage = s; });
         const numAnswered = [...result.detectedAnswers.values()].filter(s => s.size > 0).length;
         const markerNote = result.gridParams.markersUsed ? 'markers OK' : 'markers fallback';
         store.appendLog(`  page ${pageNum}: ${numAnswered} answers detected (${markerNote})`);
         pages.push(result);
+      } catch (pageErr) {
+        // Surface per-page failures without aborting the whole batch — this
+        // turns "tab crashed" into a visible log line pointing at the stage.
+        const msg = pageErr instanceof Error ? pageErr.message : String(pageErr);
+        store.appendLog(`  page ${pageNum} FAILED at stage "${lastStage}": ${msg}`, 'err');
+        console.error(`[grader] page ${pageNum} failed at stage ${lastStage}:`, pageErr);
       } finally {
-        // The raw rasterized bitmap is no longer needed — processPage already
-        // extracted its pixels. Release the GPU/memory backing immediately so
-        // peak memory stays at ~one page rather than scaling with class size.
         bitmap.close();
       }
 
       await yieldToUI();
+    }
+
+    if (pages.length === 0) {
+      throw new Error('No pages processed successfully — see log for per-page errors.');
     }
 
     store.setPages(pages);

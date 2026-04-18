@@ -17,13 +17,22 @@ export async function processPage(
   pageIndex: number,
   bitmap: ImageBitmap,
   config: SheetConfig,
+  onStage?: (stage: string) => void,
 ): Promise<PageResult> {
+  const stage = (name: string) => onStage?.(name);
+  stage('rasterToImageData');
   const imageData = bitmapToImageData(bitmap);
+  stage('orient');
   const { image: orientedData, orientationDetected } = orientImage(imageData);
+  stage('createOrientedBitmap');
   const orientedBitmap = await createImageBitmap(orientedData);
+  stage('computeGrid');
   const gridParams = computeGridParams(orientedData, config);
+  stage('analyzeBubbles');
   const { answers, flags } = analyzeBubbleGrid(orientedData, gridParams, config);
+  stage('cropName');
   const nameCrop = await cropNameRegion(orientedData, config);
+  stage('done');
 
   if (!orientationDetected) {
     flags.unshift({ message: 'Orientation markers not detected — orientation may be wrong' });
