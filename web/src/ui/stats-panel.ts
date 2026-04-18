@@ -15,7 +15,7 @@ import { computeSummaryStats } from '../domain/stats';
 import { store } from '../state';
 import type { PageResult, QuestionStat } from '../types';
 
-export function mountStatsPanel(root: HTMLElement): void {
+export function mountStatsPanel(root: HTMLElement): () => void {
   const panel = document.createElement('div');
   panel.className = 'panel';
   panel.innerHTML = `
@@ -63,8 +63,9 @@ export function mountStatsPanel(root: HTMLElement): void {
     tableWrap.innerHTML = renderTable(summary.questionStats);
   };
 
-  store.subscribe(rerender);
+  const unsub = store.subscribe(rerender);
   rerender();
+  return unsub;
 }
 
 function renderOverview(summary: ReturnType<typeof computeSummaryStats>): string {
@@ -130,7 +131,7 @@ function downloadCsv(status: HTMLElement): void {
 }
 
 async function downloadPdf(status: HTMLElement, btn: HTMLButtonElement): Promise<void> {
-  const { pages, key, config } = store.state;
+  const { pages } = store.state;
   if (pages.length === 0) return;
   btn.disabled = true;
   status.textContent = 'Building annotated PDF…';
@@ -157,11 +158,6 @@ async function downloadPdf(status: HTMLElement, btn: HTMLButtonElement): Promise
   } finally {
     btn.disabled = false;
   }
-
-  // Unused warning prevention — key may be null, which is fine for the PDF
-  // export (no green rings are drawn).
-  void key;
-  void config;
 }
 
 async function overlayPng(page: PageResult): Promise<Uint8Array> {

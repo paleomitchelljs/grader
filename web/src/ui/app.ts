@@ -20,12 +20,14 @@ export function mountApp(root: HTMLElement) {
   root.appendChild(main);
 
   let activeTab: TabId = 'upload';
+  let cleanup: (() => void) | null = null;
 
   const renderActive = () => {
+    cleanup?.();
     main.innerHTML = '';
-    if (activeTab === 'upload') mountUploadPanel(main);
-    else if (activeTab === 'review') mountReviewPanel(main);
-    else if (activeTab === 'stats') mountStatsPanel(main);
+    if (activeTab === 'upload') cleanup = mountUploadPanel(main);
+    else if (activeTab === 'review') cleanup = mountReviewPanel(main);
+    else if (activeTab === 'stats') cleanup = mountStatsPanel(main);
     updateTabButtons();
   };
 

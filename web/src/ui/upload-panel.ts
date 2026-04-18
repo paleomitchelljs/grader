@@ -8,19 +8,22 @@ import { runProcessing } from '../processor';
 import { store } from '../state';
 import { defaultColumns } from '../types';
 
-export function mountUploadPanel(root: HTMLElement): void {
+export function mountUploadPanel(root: HTMLElement): () => void {
   const wrap = document.createElement('div');
   wrap.innerHTML = renderMarkup();
   root.appendChild(wrap);
 
+  const unsubs: Array<() => void> = [];
   wireFilePickers(wrap);
   wireConfigInputs(wrap);
   wireProcessButton(wrap);
-  wireLog(wrap);
-  wireRender(wrap);
+  unsubs.push(wireLog(wrap));
+  unsubs.push(wireRender(wrap));
 
   // Initial render with current state.
   rerender(wrap);
+
+  return () => unsubs.forEach(u => u());
 }
 
 function renderMarkup(): string {
@@ -181,7 +184,7 @@ function wireProcessButton(wrap: HTMLElement) {
   });
 }
 
-function wireLog(wrap: HTMLElement) {
+function wireLog(wrap: HTMLElement): () => void {
   const logEl = wrap.querySelector<HTMLElement>('[data-role="log"]')!;
   const renderLog = () => {
     logEl.innerHTML = '';
@@ -194,12 +197,13 @@ function wireLog(wrap: HTMLElement) {
     }
     logEl.scrollTop = logEl.scrollHeight;
   };
-  store.subscribe(renderLog);
+  const unsub = store.subscribe(renderLog);
   renderLog();
+  return unsub;
 }
 
-function wireRender(wrap: HTMLElement) {
-  store.subscribe(() => rerender(wrap));
+function wireRender(wrap: HTMLElement): () => void {
+  return store.subscribe(() => rerender(wrap));
 }
 
 function rerender(wrap: HTMLElement) {

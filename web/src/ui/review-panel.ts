@@ -18,7 +18,7 @@ import { store } from '../state';
 import type { AnswerSet, PageResult } from '../types';
 import { choiceLetter } from '../types';
 
-export function mountReviewPanel(root: HTMLElement): void {
+export function mountReviewPanel(root: HTMLElement): () => void {
   const wrap = document.createElement('div');
   wrap.className = 'review-layout';
   wrap.innerHTML = `
@@ -59,8 +59,41 @@ export function mountReviewPanel(root: HTMLElement): void {
     renderSidebar(sidebar, page);
   };
 
-  store.subscribe(rerender);
+  // Keyboard shortcuts: ←/→ for prev/next page.
+  const onKey = (e: KeyboardEvent) => {
+    if (isTyping(e.target)) return;
+    const { currentPage: idx, pages } = store.state;
+    if (e.key === 'ArrowLeft' && idx > 0) {
+      store.setCurrentPage(idx - 1);
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight' && idx < pages.length - 1) {
+      store.setCurrentPage(idx + 1);
+      e.preventDefault();
+    }
+  };
+  window.addEventListener('keydown', onKey);
+
+  // Refit canvas on window resize.
+  const onResize = () => {
+    const page = currentPage();
+    if (page) drawOverlay(canvas, canvasWrap, page);
+  };
+  window.addEventListener('resize', onResize);
+
+  const unsub = store.subscribe(rerender);
   rerender();
+
+  return () => {
+    unsub();
+    window.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', onResize);
+  };
+}
+
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
 }
 
 function currentPage(): PageResult | null {
