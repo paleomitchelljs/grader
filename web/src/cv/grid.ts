@@ -8,13 +8,15 @@
 import type { GridParams, SheetConfig } from '../types';
 import { detectSheetMarkers } from './markers';
 
-const BUBBLE_X_PITCH = 59.0 / 1700.0;   // inter-bubble spacing as fraction of width
 /**
- * Row-height as a fraction of the TL–TR horizontal span.
- * Calibrated from the 2026 blank sheet at 200 DPI:
- *   row_height ≈ 69.3 px when TL–TR span ≈ 1387 px  →  ratio ≈ 0.0499
- * The Python source uses 0.04831 — keep them identical.
+ * Both constants are fractions of the TL–TR horizontal span (hSpan), not of
+ * raw image width. Scanner margins vary, so image width is not a stable ruler;
+ * the fiducial corners are. Calibrated from the 2026 blank sheet at 200 DPI
+ * where hSpan ≈ 1387 px:
+ *   bubble pitch ≈ 59 px  →  59 / 1387 ≈ 0.0425
+ *   row height   ≈ 69 px  →  ratio 0.04831 (matches the Python source)
  */
+const BUBBLE_X_PITCH_RATIO = 59.0 / 1387.0;
 const ROW_HEIGHT_RATIO = 0.04831;
 
 export function computeGridParams(imageData: ImageData, config: SheetConfig): GridParams {
@@ -31,7 +33,7 @@ export function computeGridParams(imageData: ImageData, config: SheetConfig): Gr
     const topY = Math.round(anchorY + rowHeight);
     const bottomY = Math.round(anchorY + 17 * rowHeight);
 
-    const pitch = BUBBLE_X_PITCH * w;
+    const pitch = BUBBLE_X_PITCH_RATIO * hSpan;
     const anchorXs = markers.anchors.map(a => a[0]);
     const margin = 0.4 * pitch;
     const colBounds = anchorXs.map(ax => [
