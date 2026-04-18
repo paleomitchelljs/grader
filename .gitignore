@@ -49,3 +49,5 @@ Thumbs.db
 
 # Claude Code local artifacts
 .claude/
+CLAUDE.md
+CLAUDE.local.md
