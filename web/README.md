@@ -7,8 +7,8 @@ Static single-page app that grades scanned bubble sheets entirely in the browser
 ```bash
 cd web
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # emits dist/
+npm run dev        # http://localhost:5173/grader/
+npm run build      # typechecks, then emits ../docs/ (the Pages source)
 npm run typecheck  # tsc --noEmit
 ```
 
@@ -23,7 +23,7 @@ npm run typecheck  # tsc --noEmit
 ## Design Principles
 
 - **Local-only.** No `fetch()` after page load. No cookies. No persistent storage of student data. Closing the tab erases everything.
-- **Edit flow is the centerpiece.** Click any bubble on the overlay to toggle it — edits feed both the downloaded CSV and the annotated PDF.
+- **Edit flow is the centerpiece.** Click any bubble on the overlay to toggle it — edits feed both the downloaded CSV and the annotated PDF. A "Clear all edits" button on each page is the escape hatch when a scan is so noisy that manual entry beats correcting detection.
 - **No OCR.** The cropped name-handwriting region sits next to a type-to-filter roster dropdown. Manual assignment is faster and more accurate than OCR.
 - **Configurable.** `numQuestions`, `numChoices`, `numColumns`, `fillThreshold` are UI inputs, defaulting to 50 / 6 / 3 / 0.14.
 
@@ -47,4 +47,6 @@ web/
 
 ## Deploying
 
-A workflow at `.github/workflows/pages.yml` (at the repo root) builds this directory and publishes `dist/` to GitHub Pages on pushes to `main`. The `base` in `vite.config.ts` is set to `/grader/` to match the Pages URL.
+GitHub Pages is configured to serve the `docs/` directory on `main`. `npm run build` emits directly into `../docs/` (see `outDir` in `vite.config.ts`), so deploying is: build, commit `docs/`, push. A `.nojekyll` file in `docs/` keeps Pages from running Jekyll on the output.
+
+The `base` in `vite.config.ts` is `/grader/` to match the Pages URL.
