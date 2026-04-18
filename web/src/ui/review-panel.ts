@@ -40,15 +40,8 @@ export function mountReviewPanel(root: HTMLElement): () => void {
 
   canvas.addEventListener('click', (e) => {
     const page = currentPage();
-    if (!page) { console.log('[grader] click: no page'); return; }
+    if (!page) return;
     const hit = hitTest(canvas, e, currentBubbles);
-    console.log('[grader] click', {
-      bubbles: currentBubbles.length,
-      canvasBitmap: [canvas.width, canvas.height],
-      canvasRect: canvas.getBoundingClientRect(),
-      clientXY: [e.clientX, e.clientY],
-      hit,
-    });
     if (!hit) return;
     store.toggleBubble(page.pageIndex, hit.qNum, hit.letter);
   });
@@ -127,9 +120,13 @@ function drawOverlay(
   const ctx = canvas.getContext('2d');
   if (ctx) ctx.drawImage(source, 0, 0);
 
-  // Fit the rendered canvas to the available width while preserving aspect.
-  const wrapWidth = wrap.clientWidth - 20;
-  const scale = Math.min(1, wrapWidth / source.width);
+  // Prefer the larger of height-fit and width-fit (capped at 1×) so that on
+  // narrow windows the canvas isn't shrunk into unclickable oblivion. The
+  // wrap has overflow: auto, so whichever axis exceeds the available space
+  // scrolls.
+  const scaleW = (wrap.clientWidth - 20) / source.width;
+  const scaleH = (wrap.clientHeight - 20) / source.height;
+  const scale = Math.min(Math.max(scaleW, scaleH), 1);
   canvas.style.width = `${Math.round(source.width * scale)}px`;
   canvas.style.height = `${Math.round(source.height * scale)}px`;
 
@@ -146,6 +143,11 @@ function hitTest(
   const scaleY = canvas.height / rect.height;
   const x = (e.clientX - rect.left) * scaleX;
   const y = (e.clientY - rect.top) * scaleY;
+  // Ensure every bubble is at least MIN_CSS_HIT pixels wide on screen — on
+  // small canvases the bubble's bitmap radius (~14 px) can render as 2 CSS
+  // pixels, which is impossible to click accurately.
+  const MIN_CSS_HIT = 14;
+  const minBitmapHit = MIN_CSS_HIT * Math.max(scaleX, scaleY);
 
   let best: BubbleHit | null = null;
   let bestDist = Infinity;
@@ -153,7 +155,8 @@ function hitTest(
     const dx = b.x - x;
     const dy = b.y - y;
     const d2 = dx * dx + dy * dy;
-    if (d2 < b.r * b.r && d2 < bestDist) {
+    const r = Math.max(b.r, minBitmapHit);
+    if (d2 < r * r && d2 < bestDist) {
       best = b;
       bestDist = d2;
     }
