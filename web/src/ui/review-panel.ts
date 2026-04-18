@@ -40,8 +40,15 @@ export function mountReviewPanel(root: HTMLElement): () => void {
 
   canvas.addEventListener('click', (e) => {
     const page = currentPage();
-    if (!page) return;
+    if (!page) { console.log('[grader] click: no page'); return; }
     const hit = hitTest(canvas, e, currentBubbles);
+    console.log('[grader] click', {
+      bubbles: currentBubbles.length,
+      canvasBitmap: [canvas.width, canvas.height],
+      canvasRect: canvas.getBoundingClientRect(),
+      clientXY: [e.clientX, e.clientY],
+      hit,
+    });
     if (!hit) return;
     store.toggleBubble(page.pageIndex, hit.qNum, hit.letter);
   });
