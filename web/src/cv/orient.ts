@@ -43,7 +43,7 @@ function findBasicCandidates(imageData: ImageData): { corners: CandidateLike[]; 
       const circularity = perim > 0 ? (4 * Math.PI * area) / (perim * perim) : 0;
       cnt.delete();
 
-      const withinBand = cy > 0.02 * h && cy < 0.98 * h;
+      const withinBand = cy > 0.10 * h && cy < 0.90 * h;
       if (!withinBand) continue;
       if (fill <= 0.65 || aspect >= 1.5 || rect.width >= 40 || rect.height >= 40) continue;
 

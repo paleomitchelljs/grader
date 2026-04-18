@@ -57,9 +57,10 @@ function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anc
       const circularity = perim > 0 ? (4 * Math.PI * area) / (perim * perim) : 0;
       cnt.delete();
 
-      // Exclude only the extreme margins — real fiducial corners on a
-      // tightly-cropped scan can sit at 3-4% of the height.
-      const withinBand = cy > 0.02 * h && cy < 0.98 * h;
+      // Exclude the outer margins — keeps page-edge noise and QR codes from
+      // being misclassified as corners/anchors. Real fiducials on our
+      // template sit well inside this band.
+      const withinBand = cy > 0.10 * h && cy < 0.90 * h;
       if (!withinBand) continue;
       if (fill <= 0.65 || aspect >= 1.5 || rect.width >= 40 || rect.height >= 40) continue;
 

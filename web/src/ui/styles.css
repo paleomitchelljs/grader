@@ -282,12 +282,14 @@ button.secondary:focus-visible { outline: 2px solid var(--mds-fg); outline-offse
 }
 
 .review-canvas-wrap canvas {
-  max-width: 100%;
-  height: auto;
   cursor: crosshair;
-  /* Figures are square — no border-radius, 1.5px ink rule. */
+  /* Inline width/height from JS sets display size. Don't clamp with
+     max-width here — the wrap has overflow:auto for when the canvas is
+     wider than the available space, and clamping would desync width from
+     height and stretch the bitmap. */
   border: var(--mds-border-frame);
   border-radius: var(--mds-radius-0);
+  display: block;
 }
 
 .review-sidebar {
