@@ -17,6 +17,7 @@ import type { PageResult } from './types';
 const yieldToUI = () => new Promise<void>(r => setTimeout(r, 0));
 
 export async function runProcessing(): Promise<void> {
+  console.log('[grader] runProcessing: enter');
   const { config, pdfFile } = store.state;
   if (!pdfFile) {
     store.setProcessing({ kind: 'error', message: 'No PDF selected' });
@@ -24,9 +25,13 @@ export async function runProcessing(): Promise<void> {
   }
 
   try {
+    console.log('[grader] runProcessing: setting status Loading OpenCV');
     store.setProcessing({ kind: 'processing', message: 'Loading OpenCV…', progress: 0 });
+    console.log('[grader] runProcessing: appending Waiting log');
     store.appendLog('Waiting for OpenCV.js to initialize…');
+    console.log('[grader] runProcessing: awaiting cvReady');
     await cvReady();
+    console.log('[grader] runProcessing: cvReady resolved');
     store.appendLog('OpenCV ready.');
 
     store.appendLog(`Loading PDF: ${pdfFile.name} (${formatBytes(pdfFile.size)})`);

@@ -165,6 +165,7 @@ function wireConfigInputs(wrap: HTMLElement) {
 function wireProcessButton(wrap: HTMLElement) {
   const btn = wrap.querySelector<HTMLButtonElement>('[data-role="process-btn"]')!;
   btn.addEventListener('click', async () => {
+    console.log('[grader] Grade button clicked');
     if (!store.state.pdfFile) {
       store.appendLog('Select a PDF first.', 'warn');
       return;
@@ -174,10 +175,13 @@ function wireProcessButton(wrap: HTMLElement) {
       return;
     }
     btn.disabled = true;
+    console.log('[grader] Calling runProcessing()');
     try {
       await runProcessing();
-    } catch {
-      // error already logged by processor
+      console.log('[grader] runProcessing completed');
+    } catch (err) {
+      console.error('[grader] runProcessing threw:', err);
+      store.appendLog(`Click-handler error: ${err instanceof Error ? err.message : String(err)}`, 'err');
     } finally {
       btn.disabled = false;
     }
