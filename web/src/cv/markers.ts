@@ -57,7 +57,9 @@ function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anc
       const circularity = perim > 0 ? (4 * Math.PI * area) / (perim * perim) : 0;
       cnt.delete();
 
-      const withinBand = cy > 0.10 * h && cy < 0.90 * h;
+      // Exclude only the extreme margins — real fiducial corners on a
+      // tightly-cropped scan can sit at 3-4% of the height.
+      const withinBand = cy > 0.02 * h && cy < 0.98 * h;
       if (!withinBand) continue;
       if (fill <= 0.65 || aspect >= 1.5 || rect.width >= 40 || rect.height >= 40) continue;
 
@@ -86,7 +88,16 @@ function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anc
 export function detectSheetMarkers(imageData: ImageData): Markers | null {
   const h = imageData.height;
   const { corners, anchors } = findMarkerCandidates(imageData);
-  if (corners.length < 2 || anchors.length < 3) return null;
+  if (corners.length < 2 || anchors.length < 3) {
+    console.warn('[grader] marker detection failed', {
+      imageHeight: h,
+      cornersFound: corners.length,
+      anchorsFound: anchors.length,
+      cornerSample: corners.slice(0, 4).map(c => ({ cx: c.cx, cy: c.cy, w: c.width, h: c.height, fill: +c.fill.toFixed(2), circ: +c.circularity.toFixed(2) })),
+      anchorSample: anchors.slice(0, 6).map(a => ({ cx: a.cx, cy: a.cy, w: a.width, h: a.height, fill: +a.fill.toFixed(2), circ: +a.circularity.toFixed(2) })),
+    });
+    return null;
+  }
 
   // Top two corners by cy.
   const topCorners = [...corners.slice(0, 2)].sort((a, b) => a.cx - b.cx);
