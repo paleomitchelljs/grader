@@ -28,6 +28,7 @@ export type Store = {
   setPages(pages: PageResult[]): void;
   setCurrentPage(index: number): void;
   toggleBubble(pageIndex: number, qNum: number, letter: string): void;
+  clearEditsForPage(pageIndex: number): void;
   setRosterAssignment(pageIndex: number, name: string | null): void;
   appendLog(line: string, kind?: 'info' | 'warn' | 'err'): void;
   clearLog(): void;
@@ -134,6 +135,15 @@ class StoreImpl implements Store {
     if (next.has(letter)) next.delete(letter);
     else next.add(letter);
     page.editedAnswers.set(qNum, next);
+    this.notify();
+  }
+
+  clearEditsForPage(pageIndex: number): void {
+    const page = this.state.pages[pageIndex];
+    if (!page) return;
+    for (const k of page.editedAnswers.keys()) {
+      page.editedAnswers.set(k, new Set());
+    }
     this.notify();
   }
 

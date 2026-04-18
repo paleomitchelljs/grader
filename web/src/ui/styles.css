@@ -379,6 +379,11 @@ button.secondary:focus-visible { outline: 2px solid var(--mds-fg); outline-offse
   font-size: var(--mds-text-sm);
   line-height: var(--mds-leading-normal);
 }
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .score-summary strong {
   font-family: var(--mds-sans);
   font-weight: 600;

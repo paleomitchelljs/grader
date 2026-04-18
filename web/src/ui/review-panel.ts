@@ -192,9 +192,26 @@ function renderSidebar(root: HTMLElement, page: PageResult) {
   root.innerHTML = '';
   root.appendChild(renderNamePanel(page));
   root.appendChild(renderScoreSummary(page));
+  root.appendChild(renderEditActions(page));
   root.appendChild(renderAnswersTable(page));
   if (page.flags.length > 0) root.appendChild(renderFlags(page));
   root.appendChild(renderPageNav());
+}
+
+function renderEditActions(page: PageResult): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'edit-actions';
+  const btn = document.createElement('button');
+  btn.className = 'secondary';
+  btn.textContent = 'Clear all edits';
+  btn.title = 'Wipe every selection on this page. Useful when the scan is so noisy that entering answers by hand is faster than correcting detection.';
+  btn.addEventListener('click', () => {
+    if (confirm('Clear all edited answers on this page? (Original detection is preserved.)')) {
+      store.clearEditsForPage(page.pageIndex);
+    }
+  });
+  el.appendChild(btn);
+  return el;
 }
 
 function renderNamePanel(page: PageResult): HTMLElement {
