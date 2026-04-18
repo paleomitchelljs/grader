@@ -1,0 +1,258 @@
+/* =============================================================
+   Mitchell Design System — Colors & Type
+   Dual mode: .mds-dark (presentations) | .mds-light (papers)
+   Default is light.
+   ============================================================= */
+
+/* ---- Web fonts (Google Fonts substitutes; see README) ---- */
+@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  /* ---------------- TYPE FAMILIES ---------------- */
+  --mds-serif:  'Crimson Pro', 'Charter', 'Iowan Old Style', Cambria, 'Times New Roman', Times, serif;
+  --mds-sans:   'Inter', 'Avenir Next', 'Helvetica Neue', system-ui, sans-serif;
+  --mds-mono:   'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  /* ---------------- TYPE SCALE (modular, 1.25) ---------------- */
+  --mds-text-xs:    12px;
+  --mds-text-sm:    14px;
+  --mds-text-base:  16px;
+  --mds-text-md:    18px;
+  --mds-text-lg:    22px;
+  --mds-text-xl:    28px;
+  --mds-text-2xl:   36px;
+  --mds-text-3xl:   48px;
+  --mds-text-4xl:   64px;
+
+  --mds-leading-tight:  1.15;
+  --mds-leading-snug:   1.3;
+  --mds-leading-normal: 1.55;
+  --mds-leading-loose:  1.75;
+
+  --mds-tracking-tight: -0.01em;
+  --mds-tracking-normal: 0;
+  --mds-tracking-wide:  0.04em;
+  --mds-tracking-caps:  0.08em;
+
+  /* ---------------- NEUTRAL SCALE ----------------
+     Used for both modes; tokens below pick sides. */
+  --mds-ink-0:   #ffffff;
+  --mds-ink-50:  #f7f7f5;
+  --mds-ink-100: #ececea;
+  --mds-ink-200: #d8d8d4;
+  --mds-ink-300: #b8b8b2;
+  --mds-ink-400: #8b8b85;
+  --mds-ink-500: #5f5f59;
+  --mds-ink-600: #3f3f3a;
+  --mds-ink-700: #27272a;
+  --mds-ink-800: #18181b;
+  --mds-ink-900: #0a0a0a;
+
+  /* ---------------- ACCENT (spare, paper-friendly) ---------------- */
+  --mds-accent-crimson: #a12d2f;  /* red accents / significance / highlight */
+  --mds-accent-ochre:   #c28a2b;  /* secondary accent, warm */
+  --mds-accent-moss:    #2f6b3a;  /* tertiary, from lecture-green */
+  --mds-accent-indigo:  #2a4a7f;  /* tertiary, from lecture-blue */
+
+  /* ---------------- COLORBREWER RAMPS ---------------- */
+  /* Diverging: RdBu (blue -> white -> red); classic for signed traits */
+  --cb-div-1: #2166ac; --cb-div-2: #4393c3; --cb-div-3: #92c5de; --cb-div-4: #d1e5f0;
+  --cb-div-5: #f7f7f7;
+  --cb-div-6: #fddbc7; --cb-div-7: #f4a582; --cb-div-8: #d6604d; --cb-div-9: #b2182b;
+
+  /* Diverging: PuOr (purple -> orange); used in your arm/femur tree */
+  --cb-puor-1: #542788; --cb-puor-2: #8073ac; --cb-puor-3: #b2abd2; --cb-puor-4: #d8daeb;
+  --cb-puor-5: #f7f7f7;
+  --cb-puor-6: #fee0b6; --cb-puor-7: #fdb863; --cb-puor-8: #e08214; --cb-puor-9: #b35806;
+
+  /* Sequential: YlOrRd (good for rates/densities) */
+  --cb-yor-1: #ffffcc; --cb-yor-2: #ffeda0; --cb-yor-3: #fed976; --cb-yor-4: #feb24c;
+  --cb-yor-5: #fd8d3c; --cb-yor-6: #fc4e2a; --cb-yor-7: #e31a1c; --cb-yor-8: #b10026;
+
+  /* Sequential: Viridis (perceptually uniform; your net.div tree) */
+  --cb-vir-1: #440154; --cb-vir-2: #482878; --cb-vir-3: #3e4a89; --cb-vir-4: #31688e;
+  --cb-vir-5: #26828e; --cb-vir-6: #1f9e89; --cb-vir-7: #6dcd59; --cb-vir-8: #b4de2c; --cb-vir-9: #fde725;
+
+  /* Qualitative: Dark2 (categorical, 6-way) */
+  --cb-qual-1: #1b9e77; --cb-qual-2: #d95f02; --cb-qual-3: #7570b3;
+  --cb-qual-4: #e7298a; --cb-qual-5: #66a61e; --cb-qual-6: #e6ab02;
+
+  /* ---------------- SEMANTIC (LIGHT MODE DEFAULT) ---------------- */
+  --mds-bg:        var(--mds-ink-0);
+  --mds-bg-sunk:   var(--mds-ink-50);
+  --mds-surface:   #ffffff;
+  --mds-surface-2: var(--mds-ink-50);
+  --mds-fg:        var(--mds-ink-900);
+  --mds-fg-muted:  var(--mds-ink-500);
+  --mds-fg-soft:   var(--mds-ink-400);
+  --mds-rule:      var(--mds-ink-200);
+  --mds-rule-strong: var(--mds-ink-400);
+  --mds-accent:    var(--mds-accent-crimson);
+
+  /* Chart-specific */
+  --chart-axis:        var(--mds-ink-900);
+  --chart-axis-minor:  var(--mds-ink-500);
+  --chart-grid:        var(--mds-ink-100);
+  --chart-series-1:    var(--mds-ink-900);
+  --chart-series-2:    var(--mds-accent-crimson);
+  --chart-series-3:    var(--mds-accent-indigo);
+  --chart-series-4:    var(--mds-accent-moss);
+  --chart-series-5:    var(--mds-accent-ochre);
+  --chart-ci-fill:     rgba(10,10,10,0.10);
+  --chart-ci-stroke:   rgba(10,10,10,0.35);
+  --chart-silhouette:  var(--mds-ink-900);
+
+  /* Spacing */
+  --mds-sp-1: 4px;   --mds-sp-2: 8px;   --mds-sp-3: 12px;  --mds-sp-4: 16px;
+  --mds-sp-5: 24px;  --mds-sp-6: 32px;  --mds-sp-7: 48px;  --mds-sp-8: 64px;
+
+  /* Radii: sparing. Papers are square; web affordances are gently rounded. */
+  --mds-radius-0: 0;
+  --mds-radius-1: 2px;
+  --mds-radius-2: 4px;
+  --mds-radius-3: 8px;
+
+  /* Borders */
+  --mds-border-hair:   1px solid var(--mds-rule);
+  --mds-border-frame:  1.5px solid var(--mds-ink-900); /* for figure panels */
+
+  /* Shadow (very restrained) */
+  --mds-shadow-1: 0 1px 2px rgba(10,10,10,0.06), 0 1px 1px rgba(10,10,10,0.04);
+  --mds-shadow-2: 0 4px 12px rgba(10,10,10,0.08), 0 2px 4px rgba(10,10,10,0.04);
+}
+
+/* ================ DARK MODE (PRESENTATIONS) ================ */
+.mds-dark {
+  --mds-bg:        #000000;            /* true black; matches your lectures */
+  --mds-bg-sunk:   #0a0a0a;
+  --mds-surface:   #000000;
+  --mds-surface-2: #111111;
+  --mds-fg:        #ffffff;
+  --mds-fg-muted:  var(--mds-ink-300);
+  --mds-fg-soft:   var(--mds-ink-400);
+  --mds-rule:      var(--mds-ink-700);
+  --mds-rule-strong: var(--mds-ink-400);
+  --mds-accent:    #ff4a3d;
+
+  --chart-axis:        #ffffff;
+  --chart-axis-minor:  var(--mds-ink-300);
+  --chart-grid:        var(--mds-ink-800);
+  --chart-series-1:    #ffffff;
+  --chart-series-2:    #ff4a3d;      /* hot red, punches on black */
+  --chart-series-3:    #4fa3ff;      /* lecture blue */
+  --chart-series-4:    #4ad66d;      /* lecture green */
+  --chart-series-5:    #ffd23f;      /* lecture yellow */
+  --chart-ci-fill:     rgba(255,255,255,0.14);
+  --chart-ci-stroke:   rgba(255,255,255,0.5);
+  --chart-silhouette:  #ffffff;
+
+  --mds-shadow-1: none;
+  --mds-shadow-2: none;
+}
+
+/* ---------------- SEMANTIC TYPE CLASSES ----------------
+   Use these as helpers; design-time scaffolding only. */
+.mds-display {
+  font-family: var(--mds-serif);
+  font-weight: 600;
+  font-size: var(--mds-text-4xl);
+  line-height: var(--mds-leading-tight);
+  letter-spacing: var(--mds-tracking-tight);
+  color: var(--mds-fg);
+}
+.mds-h1 {
+  font-family: var(--mds-serif);
+  font-weight: 600;
+  font-size: var(--mds-text-3xl);
+  line-height: var(--mds-leading-tight);
+  letter-spacing: var(--mds-tracking-tight);
+  color: var(--mds-fg);
+}
+.mds-h2 {
+  font-family: var(--mds-serif);
+  font-weight: 600;
+  font-size: var(--mds-text-2xl);
+  line-height: var(--mds-leading-snug);
+  color: var(--mds-fg);
+}
+.mds-h3 {
+  font-family: var(--mds-serif);
+  font-weight: 600;
+  font-size: var(--mds-text-xl);
+  line-height: var(--mds-leading-snug);
+  color: var(--mds-fg);
+}
+.mds-h4 {
+  font-family: var(--mds-sans);
+  font-weight: 600;
+  font-size: var(--mds-text-md);
+  line-height: var(--mds-leading-snug);
+  letter-spacing: var(--mds-tracking-wide);
+  text-transform: uppercase;
+  color: var(--mds-fg);
+}
+.mds-lede {
+  font-family: var(--mds-serif);
+  font-weight: 400;
+  font-size: var(--mds-text-lg);
+  line-height: var(--mds-leading-normal);
+  color: var(--mds-fg);
+}
+.mds-body {
+  font-family: var(--mds-serif);
+  font-weight: 400;
+  font-size: var(--mds-text-base);
+  line-height: var(--mds-leading-loose);
+  color: var(--mds-fg);
+}
+.mds-body-sans {
+  font-family: var(--mds-sans);
+  font-weight: 400;
+  font-size: var(--mds-text-base);
+  line-height: var(--mds-leading-normal);
+  color: var(--mds-fg);
+}
+.mds-caption {
+  font-family: var(--mds-sans);
+  font-weight: 400;
+  font-size: var(--mds-text-sm);
+  line-height: var(--mds-leading-normal);
+  color: var(--mds-fg-muted);
+}
+.mds-figlabel {
+  font-family: var(--mds-sans);
+  font-weight: 600;
+  font-size: var(--mds-text-sm);
+  letter-spacing: var(--mds-tracking-wide);
+  text-transform: uppercase;
+  color: var(--mds-fg);
+}
+.mds-mono {
+  font-family: var(--mds-mono);
+  font-size: 0.95em;
+  color: var(--mds-fg);
+}
+.mds-param {
+  /* For Greek-letter parameters used inline */
+  font-family: var(--mds-serif);
+  font-style: italic;
+  font-weight: 500;
+}
+.mds-citation {
+  font-family: var(--mds-sans);
+  font-size: var(--mds-text-xs);
+  color: var(--mds-fg-muted);
+  letter-spacing: var(--mds-tracking-wide);
+}
+
+/* ---------------- GLOBAL RESETS (scoped) ---------------- */
+.mds-root {
+  background: var(--mds-bg);
+  color: var(--mds-fg);
+  font-family: var(--mds-serif);
+  font-size: var(--mds-text-base);
+  line-height: var(--mds-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.mds-root *, .mds-root *::before, .mds-root *::after { box-sizing: border-box; }

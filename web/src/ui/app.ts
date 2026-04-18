@@ -69,7 +69,7 @@ export function mountApp(root: HTMLElement) {
 function renderPrivacyBanner(): HTMLElement {
   const el = document.createElement('div');
   el.className = 'banner-privacy';
-  el.innerHTML = `<strong>All processing is local.</strong> Your PDFs, answer keys, and student rosters never leave this browser tab. Closing the tab erases everything.`;
+  el.innerHTML = `<strong>Local only.</strong> Your PDFs, answer keys, and student rosters never leave this browser tab. Closing the tab erases everything.`;
   return el;
 }
 
@@ -77,10 +77,14 @@ function renderHeader(): HTMLElement {
   const header = document.createElement('header');
   header.className = 'app-header';
   header.innerHTML = `
-    <h1>grader</h1>
+    <div class="brand">
+      <div class="name">Mitchell Lab</div>
+      <div class="sub">grader</div>
+    </div>
+    <h1>Bubble-sheet grading</h1>
     <nav>
       <button data-tab="upload" class="active">Upload</button>
-      <button data-tab="review" disabled>Review &amp; Edit</button>
+      <button data-tab="review" disabled>Review &amp; edit</button>
       <button data-tab="stats" disabled>Stats</button>
     </nav>
   `;
