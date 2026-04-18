@@ -3,51 +3,29 @@
  *
  * @techstark/opencv-js ships a WASM build that initializes asynchronously.
  * Consumers must await cvReady() before calling any cv.* function.
+ *
+ * IMPORTANT: cvReady() resolves with undefined, not the cv module. cv is an
+ * Emscripten Module and has a `.then` method (so it can be awaited directly).
+ * Passing it to Promise.resolve triggers the thenable-unwrapping protocol,
+ * which recurses forever through cv.then and locks the main thread inside
+ * microtask processing — the promise never settles, await never resumes.
+ * Consumers should import `cv` directly from this module after awaiting.
  */
 
 import cv from '@techstark/opencv-js';
 
-let readyPromise: Promise<typeof cv> | null = null;
+let readyPromise: Promise<void> | null = null;
 
-export function cvReady(): Promise<typeof cv> {
+export function cvReady(): Promise<void> {
   if (readyPromise) return readyPromise;
-  readyPromise = new Promise((resolve) => {
+  readyPromise = new Promise<void>((resolve) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const anyCv = cv as any;
-    console.log('[grader] cvReady: inspecting cv', {
-      cvType: typeof anyCv,
-      matType: typeof anyCv?.Mat,
-      runtimeInitType: typeof anyCv?.onRuntimeInitialized,
-      keyCount: anyCv ? Object.keys(anyCv).length : -1,
-      firstKeys: anyCv ? Object.keys(anyCv).slice(0, 8) : [],
-    });
-
     if (anyCv.Mat && typeof anyCv.Mat === 'function') {
-      console.log('[grader] cvReady: cv.Mat already defined, resolving immediately');
-      resolve(cv);
+      resolve();
       return;
     }
-
-    // Heartbeat so we can tell from the console whether we're still waiting
-    // or whether onRuntimeInitialized never fires.
-    let ticks = 0;
-    const heartbeat = setInterval(() => {
-      ticks += 1;
-      console.log(`[grader] cvReady: still waiting, tick ${ticks}, cv.Mat=${typeof anyCv?.Mat}`);
-      // Also check if Mat became available without the callback firing.
-      if (anyCv?.Mat && typeof anyCv.Mat === 'function') {
-        console.warn('[grader] cvReady: cv.Mat appeared without onRuntimeInitialized firing — resolving');
-        clearInterval(heartbeat);
-        resolve(cv);
-      }
-    }, 2000);
-
-    console.log('[grader] cvReady: installing onRuntimeInitialized callback');
-    anyCv.onRuntimeInitialized = () => {
-      console.log('[grader] cvReady: onRuntimeInitialized fired');
-      clearInterval(heartbeat);
-      resolve(cv);
-    };
+    anyCv.onRuntimeInitialized = () => resolve();
   });
   return readyPromise;
 }
