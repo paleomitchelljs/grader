@@ -28,7 +28,7 @@ export async function processPage(
   await stage('orient');
   const { image: orientedData, orientationDetected } = orientImage(imageData);
   await stage('rectify');
-  const { imageData: rectifiedData, markers, rectified } = rectifyPage(orientedData);
+  const { imageData: rectifiedData, markers, rectified } = rectifyPage(orientedData, config);
   await stage('createRectifiedBitmap');
   const rectifiedBitmap = await createImageBitmap(rectifiedData);
   await stage('computeGrid');
