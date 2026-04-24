@@ -1,72 +1,38 @@
 /**
- * Page orientation correction.
+ * Page orientation detection.
  *
- * If the anchor circles end up near the top of the page (same row as the top
- * corner squares), the sheet is oriented correctly. If they're near the
- * bottom, the sheet is upside-down and must be rotated 180°.
+ * Finds the 4 corner fiducials, then compares mean darkness in the strip
+ * *above* the top-corner row against the strip *below* the bottom-corner
+ * row. The template has a header (title + name field + student handwriting)
+ * above the top fiducials and nothing below the bottom fiducials, so
+ * "where's the ink" is a stable orientation signal that doesn't depend on
+ * detecting the small anchor circles (which previously triggered spurious
+ * flips when the old anchor-cluster heuristic locked onto heavily-marked
+ * bubbles in the bottom half of the page).
  *
- * Ports omr_scanner.py :: orient_image().
+ * Errs conservatively: if the signal is weak (tightly cropped scan, blank
+ * name field, etc.) we return the image unchanged rather than guess. A
+ * missed flip is recoverable via manual editing; a wrong flip silently
+ * grades the student against the wrong bubbles.
  */
 
-import { cv } from './opencv-loader';
-
-type CandidateLike = { cx: number; cy: number; fill: number; circularity: number };
-
-function findBasicCandidates(imageData: ImageData): { corners: CandidateLike[]; anchors: CandidateLike[] } {
-  const h = imageData.height;
-  const src = cv.matFromImageData(imageData);
-  const gray = new cv.Mat();
-  const binary = new cv.Mat();
-  const contours = new cv.MatVector();
-  const hierarchy = new cv.Mat();
-
-  try {
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-    cv.threshold(gray, binary, 60, 255, cv.THRESH_BINARY_INV);
-    cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-    const corners: CandidateLike[] = [];
-    const anchors: CandidateLike[] = [];
-
-    for (let i = 0; i < contours.size(); i++) {
-      const cnt = contours.get(i);
-      const area = cv.contourArea(cnt);
-      if (area < 300 || area > 1200) { cnt.delete(); continue; }
-      const rect = cv.boundingRect(cnt);
-      const cx = rect.x + Math.floor(rect.width / 2);
-      const cy = rect.y + Math.floor(rect.height / 2);
-      const longSide = Math.max(rect.width, rect.height);
-      const shortSide = Math.max(Math.min(rect.width, rect.height), 1);
-      const aspect = longSide / shortSide;
-      const fill = area / (rect.width * rect.height);
-      const perim = cv.arcLength(cnt, true);
-      const circularity = perim > 0 ? (4 * Math.PI * area) / (perim * perim) : 0;
-      cnt.delete();
-
-      const withinBand = cy > 0.10 * h && cy < 0.90 * h;
-      if (!withinBand) continue;
-      if (fill <= 0.65 || aspect >= 1.5 || rect.width >= 40 || rect.height >= 40) continue;
-
-      const entry: CandidateLike = { cx, cy, fill, circularity };
-      if (circularity < 0.82 && fill > 0.80) corners.push(entry);
-      else if (circularity > 0.82) anchors.push(entry);
-    }
-
-    corners.sort((a, b) => a.cy - b.cy);
-    anchors.sort((a, b) => a.cy - b.cy);
-    return { corners, anchors };
-  } finally {
-    src.delete();
-    gray.delete();
-    binary.delete();
-    contours.delete();
-    hierarchy.delete();
-  }
-}
+import { findFourCorners } from './corners';
 
 /**
- * Rotate an ImageData 180° in place (returns a fresh ImageData).
+ * Minimum strip height (pixels) above top corners / below bottom corners for
+ * the density comparison to be trustworthy. At 200 DPI the template has a
+ * ~55mm margin above the top corners (~433 px), so a healthy threshold is
+ * well under that.
  */
+const MIN_STRIP_HEIGHT = 50;
+
+/**
+ * Ratio threshold: the darker side must beat the lighter side by this
+ * factor before we commit to a flip. Header text + name line comfortably
+ * clear this on real sheets; ambient scanner noise does not.
+ */
+const DARKNESS_RATIO_THRESHOLD = 1.8;
+
 function rotate180(imageData: ImageData): ImageData {
   const w = imageData.width;
   const h = imageData.height;
@@ -85,45 +51,65 @@ function rotate180(imageData: ImageData): ImageData {
   return new ImageData(out, w, h);
 }
 
-export type OrientResult = { image: ImageData; orientationDetected: boolean };
+function meanDarkness(imageData: ImageData, y1: number, y2: number): number {
+  const w = imageData.width;
+  const d = imageData.data;
+  const yStart = Math.max(0, Math.floor(y1));
+  const yEnd = Math.min(imageData.height, Math.ceil(y2));
+  if (yEnd <= yStart) return 0;
 
-/**
- * Detect orientation from fiducial markers; rotate 180° if the sheet is upside-down.
- */
-export function orientImage(imageData: ImageData): OrientResult {
-  const h = imageData.height;
-  const { corners, anchors } = findBasicCandidates(imageData);
-
-  if (corners.length >= 2 && anchors.length >= 3) {
-    const top2 = corners.slice(0, 2);
-    const topCornerY = (top2[0]!.cy + top2[1]!.cy) / 2;
-
-    // Find the tightest cluster of 3 anchors (they share a row).
-    const byCy = [...anchors].sort((a, b) => a.cy - b.cy);
-    let bestGroup = byCy.slice(0, 3);
-    if (byCy.length > 3) {
-      let bestSpread = Math.max(...bestGroup.map(a => a.cy)) - Math.min(...bestGroup.map(a => a.cy));
-      for (let i = 1; i <= byCy.length - 3; i++) {
-        const group = byCy.slice(i, i + 3);
-        const spread = group[group.length - 1]!.cy - group[0]!.cy;
-        if (spread < bestSpread) {
-          bestSpread = spread;
-          bestGroup = group;
-        }
-      }
-    }
-    const anchorMeanY = bestGroup.reduce((s, a) => s + a.cy, 0) / 3;
-
-    const anchorsNearTop = Math.abs(anchorMeanY - topCornerY) < 0.08 * h;
-    const anchorsInBottomHalf = anchorMeanY > h * 0.5;
-
-    if (anchorsNearTop && !anchorsInBottomHalf) {
-      return { image: imageData, orientationDetected: true };
-    }
-    if (anchorsInBottomHalf) {
-      return { image: rotate180(imageData), orientationDetected: true };
+  let sum = 0;
+  let count = 0;
+  for (let y = yStart; y < yEnd; y++) {
+    const rowOff = y * w * 4;
+    for (let x = 0; x < w; x++) {
+      const i = rowOff + x * 4;
+      // Rec. 601 luma; darkness = 255 - luma.
+      const luma = (d[i]! * 299 + d[i + 1]! * 587 + d[i + 2]! * 114 + 500) / 1000 | 0;
+      sum += 255 - luma;
+      count++;
     }
   }
+  return count > 0 ? sum / count : 0;
+}
 
+export type OrientResult = { image: ImageData; orientationDetected: boolean };
+
+export function orientImage(imageData: ImageData): OrientResult {
+  const corners = findFourCorners(imageData);
+  if (!corners) {
+    console.warn('[grader] orient: 4 corners not found — leaving orientation unchanged');
+    return { image: imageData, orientationDetected: false };
+  }
+
+  const ys = corners.map(c => c[1]);
+  const topY = Math.min(...ys);
+  const bottomY = Math.max(...ys);
+
+  const aboveStrip = topY;
+  const belowStrip = imageData.height - bottomY;
+  if (aboveStrip < MIN_STRIP_HEIGHT || belowStrip < MIN_STRIP_HEIGHT) {
+    console.warn('[grader] orient: strips too thin for density check', {
+      aboveStrip: +aboveStrip.toFixed(0), belowStrip: +belowStrip.toFixed(0),
+    });
+    return { image: imageData, orientationDetected: false };
+  }
+
+  const aboveDarkness = meanDarkness(imageData, 0, topY);
+  const belowDarkness = meanDarkness(imageData, bottomY, imageData.height);
+
+  const correct = aboveDarkness > DARKNESS_RATIO_THRESHOLD * belowDarkness;
+  const flipped = belowDarkness > DARKNESS_RATIO_THRESHOLD * aboveDarkness;
+
+  console.info('[grader] orient: ink density check', {
+    topY: +topY.toFixed(0), bottomY: +bottomY.toFixed(0),
+    aboveDarkness: +aboveDarkness.toFixed(2),
+    belowDarkness: +belowDarkness.toFixed(2),
+    ratio: +(Math.max(aboveDarkness, belowDarkness) / Math.max(1e-3, Math.min(aboveDarkness, belowDarkness))).toFixed(2),
+    decision: correct ? 'keep' : flipped ? 'flip' : 'ambiguous',
+  });
+
+  if (correct) return { image: imageData, orientationDetected: true };
+  if (flipped) return { image: rotate180(imageData), orientationDetected: true };
   return { image: imageData, orientationDetected: false };
 }
