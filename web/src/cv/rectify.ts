@@ -30,7 +30,16 @@ export type RectifyResult = {
 
 export function rectifyPage(imageData: ImageData): RectifyResult {
   const markers = detectSheetMarkers(imageData);
-  if (!markers || !markers.bl || !markers.br) {
+  if (!markers) {
+    console.warn('[grader] rectify: no markers at all — falling back');
+    return { imageData, markers, rectified: false };
+  }
+  if (!markers.bl || !markers.br) {
+    console.warn('[grader] rectify: bottom corners missing, falling back', {
+      hasBl: !!markers.bl, hasBr: !!markers.br,
+      tl: markers.tl, tr: markers.tr, bl: markers.bl, br: markers.br,
+      imageWH: [imageData.width, imageData.height],
+    });
     return { imageData, markers, rectified: false };
   }
 
@@ -115,6 +124,16 @@ export function rectifyPage(imageData: ImageData): RectifyResult {
     blY: tlY + canonicalH,
     anchors: transformedAnchors,
   };
+
+  console.info('[grader] rectify: applied perspective warp', {
+    detectedTL: tl, detectedTR: tr, detectedBR: br, detectedBL: bl,
+    hLenTop: +hLenTop.toFixed(1), hLenBottom: +hLenBottom.toFixed(1),
+    vLenLeft: +Math.hypot(bl[0] - tl[0], bl[1] - tl[1]).toFixed(1),
+    vLenRight: +Math.hypot(br[0] - tr[0], br[1] - tr[1]).toFixed(1),
+    canonicalW: +canonicalW.toFixed(1), canonicalH: +canonicalH.toFixed(1),
+    canonicalTL: [tlX, tlY],
+    canonicalBR: [tlX + canonicalW, tlY + canonicalH],
+  });
 
   return { imageData: rectifiedData, markers: rectifiedMarkers, rectified: true };
 }
