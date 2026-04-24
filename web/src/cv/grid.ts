@@ -1,28 +1,32 @@
 /**
  * Compute calibrated bubble-grid parameters.
  *
- * Uses fiducial markers when detected; falls back to SheetConfig fractions
- * otherwise. Ports omr_scanner.py :: _compute_grid_params().
+ * Uses fiducial markers when supplied; falls back to SheetConfig fractions
+ * otherwise. Ports omr_scanner.py :: _compute_grid_params(). Marker detection
+ * itself now lives in rectify.ts — by the time grid.ts sees the image it's
+ * already been perspective-unwarped so the fixed ratios below hold exactly.
  */
 
-import type { GridParams, SheetConfig } from '../types';
-import { detectSheetMarkers } from './markers';
+import type { GridParams, Markers, SheetConfig } from '../types';
 
 /**
- * Both constants are fractions of the TL–TR horizontal span (hSpan), not of
- * raw image width. Scanner margins vary, so image width is not a stable ruler;
- * the fiducial corners are. Calibrated from the 2026 blank sheet at 200 DPI
- * where hSpan ≈ 1387 px:
+ * Both constants are fractions of the TL–TR horizontal span (hSpan). After
+ * rectification (see rectify.ts) the page is axis-aligned with the template's
+ * exact aspect, so these ratios hold regardless of scan rotation or scale.
+ * Calibrated from the 2026 blank sheet at 200 DPI where hSpan ≈ 1387 px:
  *   bubble pitch ≈ 59 px  →  59 / 1387 ≈ 0.0425
  *   row height   ≈ 69 px  →  ratio 0.04831 (matches the Python source)
  */
 const BUBBLE_X_PITCH_RATIO = 59.0 / 1387.0;
 const ROW_HEIGHT_RATIO = 0.04831;
 
-export function computeGridParams(imageData: ImageData, config: SheetConfig): GridParams {
+export function computeGridParams(
+  imageData: ImageData,
+  markers: Markers | null,
+  config: SheetConfig,
+): GridParams {
   const h = imageData.height;
   const w = imageData.width;
-  const markers = detectSheetMarkers(imageData);
 
   if (markers) {
     const anchorY = markers.anchors.reduce((s, a) => s + a[1], 0) / markers.anchors.length;

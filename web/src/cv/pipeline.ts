@@ -12,6 +12,7 @@ import type { PageResult, SheetConfig } from '../types';
 import { analyzeBubbleGrid } from './bubbles';
 import { computeGridParams } from './grid';
 import { orientImage } from './orient';
+import { rectifyPage } from './rectify';
 
 export async function processPage(
   pageIndex: number,
@@ -26,25 +27,30 @@ export async function processPage(
   const imageData = bitmapToImageData(bitmap);
   await stage('orient');
   const { image: orientedData, orientationDetected } = orientImage(imageData);
-  await stage('createOrientedBitmap');
-  const orientedBitmap = await createImageBitmap(orientedData);
+  await stage('rectify');
+  const { imageData: rectifiedData, markers, rectified } = rectifyPage(orientedData);
+  await stage('createRectifiedBitmap');
+  const rectifiedBitmap = await createImageBitmap(rectifiedData);
   await stage('computeGrid');
-  const gridParams = computeGridParams(orientedData, config);
+  const gridParams = computeGridParams(rectifiedData, markers, config);
   await stage('analyzeBubbles');
-  const { answers, flags } = analyzeBubbleGrid(orientedData, gridParams, config);
+  const { answers, flags } = analyzeBubbleGrid(rectifiedData, gridParams, config);
   await stage('cropName');
-  const nameCrop = await cropNameRegion(orientedData, config);
+  const nameCrop = await cropNameRegion(rectifiedData, config);
   await stage('done');
 
   if (!orientationDetected) {
     flags.unshift({ message: 'Orientation markers not detected — orientation may be wrong' });
   }
+  if (!rectified && gridParams.markersUsed) {
+    flags.unshift({ message: 'Only 3 fiducial corners detected — grid not perspective-corrected' });
+  }
 
   return {
     pageIndex,
-    orientedImage: orientedBitmap,
-    width: orientedData.width,
-    height: orientedData.height,
+    orientedImage: rectifiedBitmap,
+    width: rectifiedData.width,
+    height: rectifiedData.height,
     detectedAnswers: answers,
     editedAnswers: new Map([...answers].map(([k, v]) => [k, new Set(v)])),
     flags,
