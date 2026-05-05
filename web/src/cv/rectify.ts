@@ -2,9 +2,9 @@
  * Four-point perspective rectification.
  *
  * Warps the page so the 4 corner fiducials land on a rectangle with the
- * template's exact aspect ratio (180mm horizontal, 160mm vertical — see
- * latex/bubble_sheet.tex). After rectification the bubble grid is axis-
- * aligned by construction.
+ * template's exact aspect ratio (180mm horizontal; vertical depends on row
+ * count — see latex/bubble_sheet.tex). After rectification the bubble grid
+ * is axis-aligned by construction.
  *
  * Anchor positions (used by grid.ts for per-column bubble placement) are
  * computed from template geometry rather than detected: in canonical coords
@@ -23,13 +23,28 @@ import { findFourCorners } from './corners';
 import { detectSheetMarkers } from './markers';
 
 const TEMPLATE_WIDTH_MM = 180;            // TL to TR
-const TEMPLATE_HEIGHT_MM = 160;           // TL to BL
 const TEMPLATE_ANCHOR_Y_OFFSET_MM = 5;    // anchor y = TL_y + 5mm (60mm - 55mm)
 const TEMPLATE_TL_X_MM = 15;              // TL's x on the physical page
 
+// TL-to-BL span = anchor offset + maxRows * row pitch + tail margin to BL.
+// Matches the formula used in latex/bubble_sheet_body.tex so template and
+// scanner agree for any row count.
+const TEMPLATE_ROW_PITCH_MM = 7.0;        // matches \RowHeight in the template
+const TEMPLATE_LAST_ROW_TO_BL_MM = 7.17;  // gap from last row centre to BL
+
 const TEMPLATE_ANCHOR_X_FIRST_MM = 30;
 const TEMPLATE_ANCHOR_X_RIGHT_EDGE_MM = 183;
-const TEMPLATE_X_PITCH_MM = 7.657;
+const TEMPLATE_X_PITCH_MM = 6.0;          // matches \XPitch in the template
+
+function templateHeightMm(maxRows: number): number {
+  return TEMPLATE_ANCHOR_Y_OFFSET_MM
+    + maxRows * TEMPLATE_ROW_PITCH_MM
+    + TEMPLATE_LAST_ROW_TO_BL_MM;
+}
+
+function maxRowsFromConfig(config: SheetConfig): number {
+  return Math.max(...config.columns.map(([a, b]) => b - a + 1));
+}
 
 export type RectifyResult = {
   imageData: ImageData;
@@ -38,9 +53,13 @@ export type RectifyResult = {
 };
 
 export function rectifyPage(imageData: ImageData, config: SheetConfig): RectifyResult {
-  const corners = findFourCorners(imageData);
+  const maxRows = maxRowsFromConfig(config);
+  const heightMm = templateHeightMm(maxRows);
+  const expectedAspect = TEMPLATE_WIDTH_MM / heightMm;
+
+  const corners = findFourCorners(imageData, expectedAspect);
   if (!corners) {
-    const legacy = detectSheetMarkers(imageData);
+    const legacy = detectSheetMarkers(imageData, config);
     console.warn('[grader] rectify: could not find 4 corners, using legacy path', {
       legacyHasTL: !!legacy?.tl, legacyHasTR: !!legacy?.tr,
       legacyHasBL: !!legacy?.bl, legacyHasBR: !!legacy?.br,
@@ -54,7 +73,7 @@ export function rectifyPage(imageData: ImageData, config: SheetConfig): RectifyR
   const hLenTop = Math.hypot(tr[0] - tl[0], tr[1] - tl[1]);
   const hLenBottom = Math.hypot(br[0] - bl[0], br[1] - bl[1]);
   const canonicalW = 0.5 * (hLenTop + hLenBottom);
-  const canonicalH = canonicalW * (TEMPLATE_HEIGHT_MM / TEMPLATE_WIDTH_MM);
+  const canonicalH = canonicalW * (heightMm / TEMPLATE_WIDTH_MM);
 
   const tlX = tl[0];
   const tlY = tl[1];

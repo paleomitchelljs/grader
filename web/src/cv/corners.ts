@@ -18,8 +18,10 @@
 
 import { cv } from './opencv-loader';
 
-const TEMPLATE_WIDTH_MM = 180;
-const TEMPLATE_HEIGHT_MM = 160;
+// Default aspect for the 50q/3col sheet (180mm wide, 160mm TL-to-BL). Callers
+// that know the layout (rectify.ts) override this so the plausibility check
+// adapts to taller sheets like the 100q/4col template.
+const DEFAULT_EXPECTED_ASPECT = 180 / 160;
 
 export type CornerCandidate = {
   cx: number;
@@ -84,7 +86,10 @@ export function findCornerCandidates(imageData: ImageData): CornerCandidate[] {
   return out;
 }
 
-export function findFourCorners(imageData: ImageData): CornerQuad | null {
+export function findFourCorners(
+  imageData: ImageData,
+  expectedAspect: number = DEFAULT_EXPECTED_ASPECT,
+): CornerQuad | null {
   const w = imageData.width;
   const h = imageData.height;
   const candidates = findCornerCandidates(imageData);
@@ -124,7 +129,7 @@ export function findFourCorners(imageData: ImageData): CornerQuad | null {
   const tr = winners[1]!;
   const br = winners[2]!;
   const bl = winners[3]!;
-  if (!isPlausibleRectangle(tl, tr, br, bl)) return null;
+  if (!isPlausibleRectangle(tl, tr, br, bl, expectedAspect)) return null;
   return [tl, tr, br, bl];
 }
 
@@ -140,6 +145,7 @@ function isPlausibleRectangle(
   tr: readonly [number, number],
   br: readonly [number, number],
   bl: readonly [number, number],
+  expectedAspect: number,
 ): boolean {
   const hTop = Math.hypot(tr[0] - tl[0], tr[1] - tl[1]);
   const hBot = Math.hypot(br[0] - bl[0], br[1] - bl[1]);
@@ -150,7 +156,6 @@ function isPlausibleRectangle(
   if (Math.abs(vLeft - vRight) / Math.max(vLeft, vRight) > 0.25) return false;
 
   const aspect = (hTop + hBot) / (vLeft + vRight);
-  const expected = TEMPLATE_WIDTH_MM / TEMPLATE_HEIGHT_MM;
-  if (aspect < expected * 0.7 || aspect > expected * 1.3) return false;
+  if (aspect < expectedAspect * 0.7 || aspect > expectedAspect * 1.3) return false;
   return true;
 }

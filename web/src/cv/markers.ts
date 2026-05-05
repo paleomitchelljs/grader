@@ -14,7 +14,7 @@
  */
 
 import { cv } from './opencv-loader';
-import type { Markers } from '../types';
+import type { Markers, SheetConfig } from '../types';
 
 type Candidate = {
   cx: number;
@@ -83,13 +83,14 @@ function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anc
 
 /**
  * Detect fiducial markers on a page. Returns null if fewer than 2 top corners
- * or 3 anchor circles were found — the caller should fall back to config
- * fractions in that case.
+ * or numColumns anchor circles were found — the caller should fall back to
+ * config fractions in that case.
  */
-export function detectSheetMarkers(imageData: ImageData): Markers | null {
+export function detectSheetMarkers(imageData: ImageData, config: SheetConfig): Markers | null {
   const h = imageData.height;
+  const numColumns = config.numColumns;
   const { corners, anchors } = findMarkerCandidates(imageData);
-  if (corners.length < 2 || anchors.length < 3) {
+  if (corners.length < 2 || anchors.length < numColumns) {
     console.warn('[grader] marker detection failed', {
       imageHeight: h,
       cornersFound: corners.length,
@@ -130,8 +131,8 @@ export function detectSheetMarkers(imageData: ImageData): Markers | null {
   const topAnchors = anchors
     .filter(a => Math.abs(a.cy - topYMean) < 50)
     .sort((a, b) => a.cx - b.cx)
-    .slice(0, 3);
-  if (topAnchors.length < 3) return null;
+    .slice(0, numColumns);
+  if (topAnchors.length < numColumns) return null;
 
   return {
     tl: [tl.cx, tl.cy],

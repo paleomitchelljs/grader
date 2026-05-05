@@ -34,6 +34,10 @@ export type LayoutFallback = {
   colFractions: ReadonlyArray<readonly [number, number]>; // (left, right) per column
 };
 
+// Default fallback for the 50q/3col/6choice layout under the redesigned
+// 6mm pitch + 7mm row template. Page is A4 (210x297mm). Anchors at x=30,
+// 91.5, 153. First row at y=67, last row (17th) at y=179.
+
 export type Flag = { question?: number; message: string };
 
 export type Markers = {
@@ -101,9 +105,9 @@ export const DEFAULT_CONFIG: SheetConfig = {
   bubbleRadius: 15,
   columns: [[1, 17], [18, 34], [35, 50]] as const,
   fallback: {
-    bubbleAreaTop: 0.219,
-    bubbleAreaBottom: 0.707,
-    colFractions: [[0.115, 0.323], [0.405, 0.614], [0.693, 0.901]] as const,
+    bubbleAreaTop: 0.226,
+    bubbleAreaBottom: 0.603,
+    colFractions: [[0.133, 0.295], [0.426, 0.588], [0.719, 0.881]] as const,
   },
   nameRegion: { top: 0.085, bottom: 0.12, left: 0.06, right: 0.65 },
 };
