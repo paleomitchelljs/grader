@@ -55,7 +55,10 @@ function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anc
 
   try {
     cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-    cv.threshold(gray, binary, 60, 255, cv.THRESH_BINARY_INV);
+    // Otsu adapts to scan brightness; the previous fixed cutoff at 60 missed
+    // markers on slightly underexposed pages even when the same content
+    // rendered at a different DPI was fine.
+    cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU);
     cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
     const corners: Candidate[] = [];

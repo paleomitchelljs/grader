@@ -23,6 +23,7 @@ export async function processPage(
   bitmap: ImageBitmap,
   config: SheetConfig,
   onStage?: (stage: string) => void,
+  opts: { forceConfig?: boolean } = {},
 ): Promise<ProcessPageResult> {
   const yieldTo = () => new Promise<void>(r => setTimeout(r, 0));
   const stage = async (name: string) => { onStage?.(name); await yieldTo(); };
@@ -34,7 +35,7 @@ export async function processPage(
   await stage('detectLayout');
   const detectedCols = detectColumnCount(orientedData);
   let activeConfig = config;
-  if (detectedCols !== null && detectedCols !== config.numColumns) {
+  if (!opts.forceConfig && detectedCols !== null && detectedCols !== config.numColumns) {
     const swapped = configForColumns(detectedCols, config);
     if (swapped) {
       console.info('[grader] auto-detected layout', {
@@ -44,6 +45,10 @@ export async function processPage(
       });
       activeConfig = swapped;
     }
+  } else if (opts.forceConfig && detectedCols !== null && detectedCols !== config.numColumns) {
+    console.warn('[grader] forced config overrides per-page detection', {
+      detectedColumns: detectedCols, forcedColumns: config.numColumns,
+    });
   }
   await stage('rectify');
   const { imageData: rectifiedData, markers, rectified } = rectifyPage(orientedData, activeConfig);

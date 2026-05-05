@@ -29,9 +29,9 @@ export type RenderedPage = {
  */
 export async function* renderPdfPages(
   file: File,
-  opts: { dpi?: number } = {},
+  opts: { dpi?: number; onlyPages?: ReadonlyArray<number> } = {},
 ): AsyncGenerator<RenderedPage, void, void> {
-  const { dpi = 200 } = opts;
+  const { dpi = 200, onlyPages } = opts;
   const arrayBuffer = await file.arrayBuffer();
 
   const loadingTask = pdfjsLib.getDocument({
@@ -44,9 +44,11 @@ export async function* renderPdfPages(
   const pdf = await loadingTask.promise;
   const scale = dpi / 72;
   const totalPages = pdf.numPages;
+  const wanted = onlyPages ? new Set(onlyPages) : null;
 
   try {
     for (let i = 1; i <= totalPages; i++) {
+      if (wanted && !wanted.has(i)) continue;
       const page = await pdf.getPage(i);
       const viewport = page.getViewport({ scale });
       const canvas = new OffscreenCanvas(viewport.width, viewport.height);
