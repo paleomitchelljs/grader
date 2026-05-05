@@ -25,8 +25,28 @@ type Candidate = {
   fill: number;
 };
 
+// Fiducial geometry from latex/bubble_sheet_body.tex on a 210mm-wide A4 page.
+// Filters are expressed in fractions of image width so detection works at any
+// scan DPI without retuning. Corners are 3.5mm squares (1.67% of W); anchor
+// circles are 3.7mm in diameter (1.76% of W). The window covers both because
+// they go through the same candidate list and are split downstream by shape.
+const A4_WIDTH_MM = 210;
+const FIDUCIAL_NOMINAL_MM = 3.6;
+const FIDUCIAL_SIDE_MIN_FRAC = 0.6 * FIDUCIAL_NOMINAL_MM / A4_WIDTH_MM;  // ~1.0% of W
+const FIDUCIAL_SIDE_MAX_FRAC = 1.8 * FIDUCIAL_NOMINAL_MM / A4_WIDTH_MM;  // ~3.1% of W
+const FIDUCIAL_AREA_MIN_FACTOR = 0.35;  // vs π·(side/2)² of nominal
+const FIDUCIAL_AREA_MAX_FACTOR = 2.5;
+
 function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anchors: Candidate[] } {
+  const w = imageData.width;
   const h = imageData.height;
+  const minSide = FIDUCIAL_SIDE_MIN_FRAC * w;
+  const maxSide = FIDUCIAL_SIDE_MAX_FRAC * w;
+  const nominalSidePx = (FIDUCIAL_NOMINAL_MM / A4_WIDTH_MM) * w;
+  const nominalArea = Math.PI * (nominalSidePx / 2) * (nominalSidePx / 2);
+  const minArea = FIDUCIAL_AREA_MIN_FACTOR * nominalArea;
+  const maxArea = FIDUCIAL_AREA_MAX_FACTOR * nominalArea;
+
   const src = cv.matFromImageData(imageData);
   const gray = new cv.Mat();
   const binary = new cv.Mat();
@@ -44,7 +64,7 @@ function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anc
     for (let i = 0; i < contours.size(); i++) {
       const cnt = contours.get(i);
       const area = cv.contourArea(cnt);
-      if (area < 300 || area > 1200) { cnt.delete(); continue; }
+      if (area < minArea || area > maxArea) { cnt.delete(); continue; }
 
       const rect = cv.boundingRect(cnt);
       const cx = rect.x + Math.floor(rect.width / 2);
@@ -57,12 +77,11 @@ function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anc
       const circularity = perim > 0 ? (4 * Math.PI * area) / (perim * perim) : 0;
       cnt.delete();
 
-      // Exclude the outer margins — keeps page-edge noise and QR codes from
-      // being misclassified as corners/anchors. Real fiducials on our
-      // template sit well inside this band.
       const withinBand = cy > 0.10 * h && cy < 0.90 * h;
       if (!withinBand) continue;
-      if (fill <= 0.65 || aspect >= 1.5 || rect.width >= 40 || rect.height >= 40) continue;
+      if (fill <= 0.65 || aspect >= 1.5) continue;
+      if (rect.width < minSide || rect.width > maxSide) continue;
+      if (rect.height < minSide || rect.height > maxSide) continue;
 
       const entry: Candidate = { cx, cy, width: rect.width, height: rect.height, circularity, fill };
       if (circularity < 0.82 && fill > 0.80) corners.push(entry);
@@ -148,8 +167,11 @@ export function detectSheetMarkers(imageData: ImageData, config: SheetConfig): M
   }
 
   // Anchors near the top corners (same header row), left-to-right by cx.
+  // Window scales with image height — corner-to-anchor offset is ~5mm and
+  // we need to capture it without bleeding into row 1 (~12mm below corner).
+  const headerWindow = 0.025 * h;
   const topAnchors = anchors
-    .filter(a => Math.abs(a.cy - topYMean) < 50)
+    .filter(a => Math.abs(a.cy - topYMean) < headerWindow)
     .sort((a, b) => a.cx - b.cx)
     .slice(0, numColumns);
   if (topAnchors.length < numColumns) return null;

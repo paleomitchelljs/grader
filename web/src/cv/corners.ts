@@ -38,7 +38,26 @@ export type CornerQuad = readonly [
   readonly [number, number],
 ];
 
+// Corner squares are 3.5mm on a 210mm page (1.67% of W). Filters scale with
+// image width so detection works at any scan DPI without retuning. The window
+// is intentionally wider than the marker-candidate window in markers.ts so
+// the four corners can also be considered from this pass when needed.
+const A4_WIDTH_MM = 210;
+const CORNER_NOMINAL_MM = 3.5;
+const CORNER_SIDE_MIN_FRAC = 0.4 * CORNER_NOMINAL_MM / A4_WIDTH_MM;  // ~0.7% of W
+const CORNER_SIDE_MAX_FRAC = 2.4 * CORNER_NOMINAL_MM / A4_WIDTH_MM;  // ~4.0% of W
+const CORNER_AREA_MIN_FACTOR = 0.2;
+const CORNER_AREA_MAX_FACTOR = 4.0;
+
 export function findCornerCandidates(imageData: ImageData): CornerCandidate[] {
+  const w = imageData.width;
+  const minSidePx = CORNER_SIDE_MIN_FRAC * w;
+  const maxSidePx = CORNER_SIDE_MAX_FRAC * w;
+  const nominalSide = (CORNER_NOMINAL_MM / A4_WIDTH_MM) * w;
+  const nominalArea = nominalSide * nominalSide;
+  const minArea = CORNER_AREA_MIN_FACTOR * nominalArea;
+  const maxArea = CORNER_AREA_MAX_FACTOR * nominalArea;
+
   const src = cv.matFromImageData(imageData);
   const gray = new cv.Mat();
   const binary = new cv.Mat();
@@ -63,10 +82,8 @@ export function findCornerCandidates(imageData: ImageData): CornerCandidate[] {
       const circularity = perim > 0 ? (4 * Math.PI * area) / (perim * perim) : 0;
       cnt.delete();
 
-      // Loose filters — geometric selection picks the right ones afterwards.
-      // Ranges cover ~150-330 DPI and tolerate mild skew / occlusion.
-      if (area < 150 || area > 5000) continue;
-      if (maxSide > 90 || minSide < 8) continue;
+      if (area < minArea || area > maxArea) continue;
+      if (maxSide > maxSidePx || minSide < minSidePx) continue;
       if (aspect > 2.2) continue;
       if (fill < 0.5) continue;
 
