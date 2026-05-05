@@ -6,7 +6,6 @@
 import { parseAnswerKey, parseRoster, readFileText } from '../io/csv';
 import { runProcessing } from '../processor';
 import { store } from '../state';
-import { defaultColumns } from '../types';
 
 export function mountUploadPanel(root: HTMLElement): () => void {
   const wrap = document.createElement('div');
@@ -55,25 +54,15 @@ function renderMarkup(): string {
     </div>
 
     <div class="panel">
-      <h2>2. Sheet layout</h2>
-      <div class="form-row">
-        <label for="cfg-numq">Number of questions:</label>
-        <input type="number" id="cfg-numq" min="1" max="500" />
-      </div>
-      <div class="form-row">
-        <label for="cfg-numc">Choices per question:</label>
-        <input type="number" id="cfg-numc" min="2" max="26" />
-      </div>
-      <div class="form-row">
-        <label for="cfg-numcol">Number of columns:</label>
-        <input type="number" id="cfg-numcol" min="1" max="6" />
-      </div>
+      <h2>2. Fill threshold</h2>
       <div class="form-row">
         <label for="cfg-thresh">Fill threshold (0–1):</label>
         <input type="number" id="cfg-thresh" min="0.02" max="0.9" step="0.01" />
       </div>
       <p class="small-note">
-        Defaults are the BIO145 layout: 50 questions, 6 choices (A–F), 3 columns. Lower the threshold if students mark lightly.
+        Sheet layout (questions, choices, columns) is auto-detected from the
+        fiducial markers — both the 50q and 100q templates are recognised.
+        Lower the threshold if students marked lightly with pencil.
       </p>
     </div>
 
@@ -132,34 +121,12 @@ function wireFilePickers(wrap: HTMLElement) {
 }
 
 function wireConfigInputs(wrap: HTMLElement) {
-  const numq = wrap.querySelector<HTMLInputElement>('#cfg-numq')!;
-  const numc = wrap.querySelector<HTMLInputElement>('#cfg-numc')!;
-  const numcol = wrap.querySelector<HTMLInputElement>('#cfg-numcol')!;
   const thresh = wrap.querySelector<HTMLInputElement>('#cfg-thresh')!;
-
-  const syncFromState = () => {
-    numq.value = String(store.state.config.numQuestions);
-    numc.value = String(store.state.config.numChoices);
-    numcol.value = String(store.state.config.numColumns);
-    thresh.value = String(store.state.config.fillThreshold);
-  };
-  syncFromState();
-
-  const applyConfig = () => {
-    const nq = clampInt(numq.value, 1, 500, store.state.config.numQuestions);
-    const nc = clampInt(numc.value, 2, 26, store.state.config.numChoices);
-    const ncol = clampInt(numcol.value, 1, 6, store.state.config.numColumns);
+  thresh.value = String(store.state.config.fillThreshold);
+  thresh.addEventListener('change', () => {
     const thr = clampFloat(thresh.value, 0.02, 0.9, store.state.config.fillThreshold);
-    store.config({
-      numQuestions: nq,
-      numChoices: nc,
-      numColumns: ncol,
-      fillThreshold: thr,
-      columns: defaultColumns(nq, ncol),
-    });
-  };
-
-  [numq, numc, numcol, thresh].forEach(el => el.addEventListener('change', applyConfig));
+    store.config({ fillThreshold: thr });
+  });
 }
 
 function wireProcessButton(wrap: HTMLElement) {
@@ -227,11 +194,6 @@ function rerender(wrap: HTMLElement) {
   }
 }
 
-function clampInt(s: string, lo: number, hi: number, fallback: number): number {
-  const v = parseInt(s, 10);
-  if (!Number.isFinite(v)) return fallback;
-  return Math.min(hi, Math.max(lo, v));
-}
 function clampFloat(s: string, lo: number, hi: number, fallback: number): number {
   const v = parseFloat(s);
   if (!Number.isFinite(v)) return fallback;
