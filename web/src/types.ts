@@ -34,9 +34,8 @@ export type LayoutFallback = {
   colFractions: ReadonlyArray<readonly [number, number]>; // (left, right) per column
 };
 
-// Default fallback for the 50q/3col/6choice layout under the redesigned
-// 6mm pitch + 7mm row template. Page is A4 (210x297mm). Anchors at x=30,
-// 91.5, 153. First row at y=67, last row (17th) at y=179.
+// Fallback fractions are derived from the LaTeX templates (page A4, TL at
+// (15,55)mm, anchor 5mm below TL, 6mm bubble pitch, 7mm row pitch).
 
 export type Flag = { question?: number; message: string };
 
@@ -97,7 +96,7 @@ export type SummaryStats = {
   flags: string[];
 };
 
-export const DEFAULT_CONFIG: SheetConfig = {
+export const LAYOUT_50Q: SheetConfig = {
   numQuestions: 50,
   numChoices: 6,
   numColumns: 3,
@@ -111,6 +110,34 @@ export const DEFAULT_CONFIG: SheetConfig = {
   },
   nameRegion: { top: 0.085, bottom: 0.12, left: 0.06, right: 0.65 },
 };
+
+export const LAYOUT_100Q: SheetConfig = {
+  numQuestions: 100,
+  numChoices: 5,
+  numColumns: 4,
+  fillThreshold: 0.14,
+  bubbleRadius: 15,
+  columns: [[1, 25], [26, 50], [51, 75], [76, 100]] as const,
+  fallback: {
+    bubbleAreaTop: 0.226,
+    bubbleAreaBottom: 0.791,
+    colFractions: [[0.129, 0.271], [0.333, 0.476], [0.538, 0.681], [0.743, 0.886]] as const,
+  },
+  nameRegion: { top: 0.085, bottom: 0.12, left: 0.06, right: 0.65 },
+};
+
+export const DEFAULT_CONFIG: SheetConfig = LAYOUT_50Q;
+
+/**
+ * Pick the layout template that matches a detected column count. Preserves
+ * user-tunable fields (fillThreshold, bubbleRadius) from `base` so manual
+ * threshold adjustments survive auto-detection.
+ */
+export function configForColumns(numColumns: number, base: SheetConfig): SheetConfig | null {
+  const template = numColumns === 3 ? LAYOUT_50Q : numColumns === 4 ? LAYOUT_100Q : null;
+  if (!template) return null;
+  return { ...template, fillThreshold: base.fillThreshold, bubbleRadius: base.bubbleRadius };
+}
 
 /**
  * Compute default column ranges for a given total question count and column count.

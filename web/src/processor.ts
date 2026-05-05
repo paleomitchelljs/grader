@@ -10,7 +10,7 @@ import { renderPdfPages } from './pdf/load';
 import { cvReady } from './cv/opencv-loader';
 import { processPage } from './cv/pipeline';
 import { store } from './state';
-import type { PageResult } from './types';
+import type { PageResult, SheetConfig } from './types';
 
 // Let the event loop run a task queue tick — paints progress, flushes log DOM,
 // and gives the tab a heartbeat so the browser doesn't decide it's hung.
@@ -33,6 +33,7 @@ export async function runProcessing(): Promise<void> {
     store.setProcessing({ kind: 'processing', message: 'Opening PDF…', progress: 0 });
 
     const pages: PageResult[] = [];
+    let detectedConfig: SheetConfig | null = null;
     for await (const rendered of renderPdfPages(pdfFile)) {
       const { bitmap, pageNum, totalPages } = rendered;
       store.setProcessing({
@@ -53,7 +54,12 @@ export async function runProcessing(): Promise<void> {
         stageStart = performance.now();
       };
       try {
-        const result = await processPage(pageNum - 1, bitmap, config, trackStage);
+        const activeConfig = detectedConfig ?? config;
+        const { result, configUsed } = await processPage(pageNum - 1, bitmap, activeConfig, trackStage);
+        if (!detectedConfig && configUsed.numColumns !== config.numColumns) {
+          detectedConfig = configUsed;
+          store.appendLog(`  detected ${configUsed.numQuestions}-question layout (${configUsed.numColumns} columns)`);
+        }
         const numAnswered = [...result.detectedAnswers.values()].filter(s => s.size > 0).length;
         const markerNote = result.gridParams.markersUsed ? 'markers OK' : 'markers fallback';
         store.appendLog(`  page ${pageNum}: ${numAnswered} answers detected (${markerNote})`);
@@ -75,6 +81,9 @@ export async function runProcessing(): Promise<void> {
       throw new Error('No pages processed successfully — see log for per-page errors.');
     }
 
+    if (detectedConfig) {
+      store.config(detectedConfig);
+    }
     store.setPages(pages);
     store.setProcessing({ kind: 'idle' });
     const flagCount = pages.reduce((s, p) => s + p.flags.length, 0);

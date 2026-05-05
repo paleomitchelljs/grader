@@ -9,17 +9,21 @@
  */
 
 import type { PageResult, SheetConfig } from '../types';
+import { configForColumns } from '../types';
 import { analyzeBubbleGrid } from './bubbles';
 import { computeGridParams } from './grid';
+import { detectColumnCount } from './markers';
 import { orientImage } from './orient';
 import { rectifyPage } from './rectify';
+
+export type ProcessPageResult = { result: PageResult; configUsed: SheetConfig };
 
 export async function processPage(
   pageIndex: number,
   bitmap: ImageBitmap,
   config: SheetConfig,
   onStage?: (stage: string) => void,
-): Promise<PageResult> {
+): Promise<ProcessPageResult> {
   const yieldTo = () => new Promise<void>(r => setTimeout(r, 0));
   const stage = async (name: string) => { onStage?.(name); await yieldTo(); };
 
@@ -27,16 +31,30 @@ export async function processPage(
   const imageData = bitmapToImageData(bitmap);
   await stage('orient');
   const { image: orientedData, orientationDetected } = orientImage(imageData);
+  await stage('detectLayout');
+  const detectedCols = detectColumnCount(orientedData);
+  let activeConfig = config;
+  if (detectedCols !== null && detectedCols !== config.numColumns) {
+    const swapped = configForColumns(detectedCols, config);
+    if (swapped) {
+      console.info('[grader] auto-detected layout', {
+        detectedColumns: detectedCols,
+        fromQuestions: config.numQuestions,
+        toQuestions: swapped.numQuestions,
+      });
+      activeConfig = swapped;
+    }
+  }
   await stage('rectify');
-  const { imageData: rectifiedData, markers, rectified } = rectifyPage(orientedData, config);
+  const { imageData: rectifiedData, markers, rectified } = rectifyPage(orientedData, activeConfig);
   await stage('createRectifiedBitmap');
   const rectifiedBitmap = await createImageBitmap(rectifiedData);
   await stage('computeGrid');
-  const gridParams = computeGridParams(rectifiedData, markers, config);
+  const gridParams = computeGridParams(rectifiedData, markers, activeConfig);
   await stage('analyzeBubbles');
-  const { answers, flags } = analyzeBubbleGrid(rectifiedData, gridParams, config);
+  const { answers, flags } = analyzeBubbleGrid(rectifiedData, gridParams, activeConfig);
   await stage('cropName');
-  const nameCrop = await cropNameRegion(rectifiedData, config);
+  const nameCrop = await cropNameRegion(rectifiedData, activeConfig);
   await stage('done');
 
   if (!orientationDetected) {
@@ -46,7 +64,7 @@ export async function processPage(
     flags.unshift({ message: 'Only 3 fiducial corners detected — grid not perspective-corrected' });
   }
 
-  return {
+  const result: PageResult = {
     pageIndex,
     orientedImage: rectifiedBitmap,
     width: rectifiedData.width,
@@ -58,6 +76,7 @@ export async function processPage(
     nameCrop,
     rosterName: null,
   };
+  return { result, configUsed: activeConfig };
 }
 
 function bitmapToImageData(bitmap: ImageBitmap): ImageData {

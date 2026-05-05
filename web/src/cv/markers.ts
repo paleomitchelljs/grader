@@ -82,6 +82,26 @@ function findMarkerCandidates(imageData: ImageData): { corners: Candidate[]; anc
 }
 
 /**
+ * Count the column-anchor circles in the page header. Used to pick between
+ * sheet layouts (3 → 50q, 4 → 100q) before the rest of the pipeline locks in
+ * a config. Returns null if we can't find a confident header cluster.
+ *
+ * Rule of thumb: anchors live ~5mm below TL; the next things below them
+ * (row 1 bubbles) are ~7mm further down. At 200 DPI that's ~55px, so a 30px
+ * y-tolerance reliably isolates the anchor row.
+ */
+export function detectColumnCount(imageData: ImageData): number | null {
+  const { anchors } = findMarkerCandidates(imageData);
+  if (anchors.length < 3) return null;
+  const sorted = [...anchors].sort((a, b) => a.cy - b.cy);
+  const topY = sorted[0].cy;
+  const tolerance = 0.015 * imageData.height; // ~30px at h≈2000
+  const headerRow = sorted.filter(a => Math.abs(a.cy - topY) < tolerance);
+  if (headerRow.length < 3) return null;
+  return headerRow.length;
+}
+
+/**
  * Detect fiducial markers on a page. Returns null if fewer than 2 top corners
  * or numColumns anchor circles were found — the caller should fall back to
  * config fractions in that case.
