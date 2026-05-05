@@ -1,0 +1,24 @@
+% =============================================================================
+% bubble_sheet.tex --- A4 50-question answer sheet for the grader toolkit.
+%
+% 3 columns x 17 rows x 6 choices (a-f). Compile with:
+%   pdflatex bubble_sheet.tex
+% No shell-escape, no extra packages beyond a standard TeX Live install.
+%
+% Drawing logic lives in bubble_sheet_body.tex and is shared with the 100q
+% template; this file just sets the question counts.
+% =============================================================================
+
+\documentclass{article}
+\usepackage[a4paper,margin=0pt]{geometry}
+\usepackage{tikz}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\newcommand{\NumQuestions}{50}
+\newcommand{\NumChoices}{6}
+\newcommand{\NumColumns}{3}
+
+\begin{document}
+\input{bubble_sheet_body.tex}
+\end{document}

@@ -1,0 +1,120 @@
+% =============================================================================
+% bubble_sheet_body.tex --- shared drawing logic for the bubble-sheet
+% templates. Not compiled directly; \input from bubble_sheet.tex (50q) and
+% bubble_sheet_100q.tex (100q).
+%
+% Defaults below are picked up unless the wrapper has \newcommand'd them
+% first. Counts (\NumQuestions / \NumChoices / \NumColumns) have no
+% defaults because compiling without choosing them is almost certainly a
+% mistake -- the wrapper must set them.
+% =============================================================================
+
+\providecommand{\BubbleRadius}{2.0}      % drawn circle radius, mm
+\providecommand{\AnchorRadius}{1.85}     % column anchor disc radius, mm
+\providecommand{\NumberFont}{\small}     % question-number font
+\providecommand{\NumberOffset}{4}        % mm from anchor centre to number's right edge
+\providecommand{\ChoiceFont}{\footnotesize\bfseries}
+\providecommand{\QStartOffset}{0}        % added to \q on every row (multi-page sheets)
+\providecommand{\PageLabel}{}            % shown right of header subtitle if non-empty
+
+\begin{tikzpicture}[x=1mm, y=-1mm, line width=0.4pt]
+  \useasboundingbox (0,0) rectangle (210, 297);
+
+  % -- Derived quantities -------------------------------------------------
+  % Distribute NumQuestions across NumColumns. The first ExtraRows columns
+  % carry one extra question each, matching web/src/types.ts :: defaultColumns.
+  \pgfmathtruncatemacro{\BaseRows}{int(\NumQuestions / \NumColumns)}
+  \pgfmathtruncatemacro{\ExtraRows}{\NumQuestions - \BaseRows * \NumColumns}
+  \pgfmathtruncatemacro{\NumChoicesM}{\NumChoices - 1}
+
+  % Bubble pitch and row height. Must match BUBBLE_X_PITCH_RATIO and
+  % ROW_HEIGHT_RATIO in web/src/cv/grid.ts (both expressed as fractions of
+  % the 180mm hSpan): 6/180 and 7/180.
+  \pgfmathsetmacro{\XPitch}{6.0}
+  \pgfmathsetmacro{\RowHeight}{7.0}
+
+  % Column anchors span x = 30mm to x = (183 - last-bubble offset), leaving a
+  % ~12mm quiet zone to the right-corner marker at x=195.
+  \pgfmathsetmacro{\AnchorXFirst}{30}
+  \pgfmathsetmacro{\AnchorXLast}{183 - \NumChoicesM * \XPitch}
+  \pgfmathsetmacro{\ColSpacing}{%
+    \NumColumns > 1 ? (\AnchorXLast - \AnchorXFirst) / (\NumColumns - 1) : 0}
+
+  % Row-0 y = anchor y + one row height (matches computeGridParams in grid.ts).
+  \pgfmathsetmacro{\AnchorY}{60}
+  \pgfmathsetmacro{\RowOneY}{\AnchorY + \RowHeight}
+
+  % Tallest column drives the bottom-fiducial y. Mirrors the maxRows term in
+  % web/src/cv/rectify.ts :: templateHeightMm so the scanner can rectify any
+  % size sheet without a per-template constant.
+  \pgfmathtruncatemacro{\MaxRows}{\BaseRows + (\ExtraRows > 0 ? 1 : 0)}
+  \pgfmathsetmacro{\BottomCornerY}{\AnchorY + \MaxRows * \RowHeight + 7.17}
+
+  % -- Page header -------------------------------------------------------
+  \node[anchor=north west, font=\LARGE\bfseries] at (15, 16)
+        {Exam Answer Sheet};
+  \node[anchor=north west, font=\footnotesize\itshape, text=black!55,
+        text width=140mm] at (15, 25)
+        {Fill each bubble completely. To change an answer, erase fully or
+         strike through the wrong mark and fill the new one.};
+  \node[anchor=north east, font=\footnotesize\itshape, text=black!55]
+        at (195, 25) {\PageLabel};
+
+  \node[anchor=base west, font=\small] at (15, 44)  {Name};
+  \draw (28, 44) -- (130, 44);
+  \node[anchor=base west, font=\small] at (140, 44) {Date};
+  \draw (152, 44) -- (195, 44);
+
+  \draw[draw=black!30, line width=0.3pt] (15, 49) -- (195, 49);
+
+  % -- Fiducial corner squares -------------------------------------------
+  % TL and TR define the hSpan that the scanner uses to calibrate the grid.
+  % BL and BR help confirm orientation; one may be obscured without breaking
+  % detection. Bottom y comes from \BottomCornerY so the layout adapts to
+  % \NumQuestions automatically (215mm at 50q, ~285mm at 100q).
+  \foreach \cx in {15, 195} {%
+     \fill (\cx-1.75, 55-1.75) rectangle (\cx+1.75, 55+1.75);
+     \fill (\cx-1.75, \BottomCornerY-1.75) rectangle (\cx+1.75, \BottomCornerY+1.75);
+  }
+
+  % -- Columns -----------------------------------------------------------
+  \foreach \col in {1,...,\NumColumns} {%
+     \pgfmathsetmacro{\ax}{\AnchorXFirst + (\col - 1) * \ColSpacing}
+     \pgfmathtruncatemacro{\rowsCol}%
+        {\BaseRows + (\col <= \ExtraRows ? 1 : 0)}
+     \pgfmathtruncatemacro{\colMinus}{\col - 1}
+     \pgfmathtruncatemacro{\qStart}%
+        {1 + \colMinus * \BaseRows
+           + (\colMinus < \ExtraRows ? \colMinus : \ExtraRows)}
+
+     % Column anchor disc (solid black). Sits 5mm below the top corner row
+     % so its centre is within ~40 px of the corner-y average --- inside the
+     % scanner's 50-px window for "same header row".
+     \fill (\ax, \AnchorY) circle[radius=\AnchorRadius mm];
+
+     % Choice-letter labels between the anchor and the first bubble row.
+     % Offset 2.5mm fits the 7mm row height: there's only ~3mm of clear space
+     % between anchor bottom and row-1 bubble top, and \footnotesize letters
+     % need most of it.
+     \foreach \ci in {0,...,\NumChoicesM} {%
+        \pgfmathsetmacro{\bx}{\ax + \ci * \XPitch}
+        \pgfmathtruncatemacro{\code}{97 + \ci}  % ASCII 'a' + ci
+        \node[anchor=south, font=\ChoiceFont, inner sep=0.5pt]
+              at (\bx, \RowOneY - 2.5) {\char\code};
+     }
+
+     % Question rows. Row 1 centre = anchor_y + row_height (matches
+     % web/src/cv/grid.ts :: computeGridParams).
+     \foreach \r in {1,...,\rowsCol} {%
+        \pgfmathsetmacro{\yy}{\RowOneY + (\r - 1) * \RowHeight}
+        \pgfmathtruncatemacro{\q}{\qStart + \r - 1 + \QStartOffset}
+
+        \node[anchor=east, font=\NumberFont] at (\ax - \NumberOffset, \yy) {\q};
+
+        \foreach \ci in {0,...,\NumChoicesM} {%
+           \pgfmathsetmacro{\bx}{\ax + \ci * \XPitch}
+           \draw (\bx, \yy) circle[radius=\BubbleRadius mm];
+        }
+     }
+  }
+\end{tikzpicture}

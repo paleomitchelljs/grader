@@ -1,0 +1,37 @@
+% =============================================================================
+% bubble_sheet_100q_2page.tex --- 100-question answer sheet, two A4 pages.
+%
+% Each page is the proven 50q layout (3 columns x 17 rows x 6 choices), so
+% question numbers and bubbles have plenty of breathing room. Page 1 covers
+% q1-50; page 2 covers q51-100 via the \QStartOffset hook in
+% bubble_sheet_body.tex.
+%
+% Workflow caveat: the web app currently models one PDF page = one student.
+% To grade with this template, split the scanned packet into two halves
+% (q1-50 sheets and q51-100 sheets), grade each as a 50q exam, then merge
+% the two CSVs in a spreadsheet (q01-q50 of side B becomes q51-q100). Full
+% native two-page support will need scanner changes.
+% =============================================================================
+
+\documentclass{article}
+\usepackage[a4paper,margin=0pt]{geometry}
+\usepackage{tikz}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\newcommand{\NumQuestions}{50}
+\newcommand{\NumChoices}{6}
+\newcommand{\NumColumns}{3}
+
+\begin{document}
+
+\newcommand{\QStartOffset}{0}
+\newcommand{\PageLabel}{Page 1 of 2 --- Questions 1--50}
+\input{bubble_sheet_body.tex}
+
+\newpage
+\renewcommand{\QStartOffset}{50}
+\renewcommand{\PageLabel}{Page 2 of 2 --- Questions 51--100}
+\input{bubble_sheet_body.tex}
+
+\end{document}

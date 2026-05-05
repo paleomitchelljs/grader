@@ -1,0 +1,31 @@
+% =============================================================================
+% bubble_sheet_100q.tex --- A4 100-question answer sheet, single page.
+%
+% 4 columns x 25 rows x 5 choices (a-e). Six choices per question doesn't
+% fit on A4 with four columns even at the tighter 6mm bubble pitch (each
+% column would still need ~30mm of bubble width and the inter-column gap
+% gets cramped). If you need 6 choices, use the 50q template
+% (bubble_sheet.tex) on a longer paper size, or split the exam across two
+% sheets.
+%
+% Compile with  pdflatex bubble_sheet_100q.tex
+% In the web app set: numQuestions=100, numColumns=4, numChoices=5.
+%
+% Drawing logic is shared with bubble_sheet.tex via bubble_sheet_body.tex;
+% the new tighter pitch gives this layout enough horizontal slack that no
+% per-template typography overrides are needed.
+% =============================================================================
+
+\documentclass{article}
+\usepackage[a4paper,margin=0pt]{geometry}
+\usepackage{tikz}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+
+\newcommand{\NumQuestions}{100}
+\newcommand{\NumChoices}{5}
+\newcommand{\NumColumns}{4}
+
+\begin{document}
+\input{bubble_sheet_body.tex}
+\end{document}
