@@ -38,6 +38,7 @@ latex/*.synctex.gz
 latex/*.fdb_latexmk
 latex/*.fls
 latex/*.toc
+latex/*.pdf
 
 # OS and editor cruft
 .DS_Store
