@@ -78,7 +78,7 @@ function renderHeader(): HTMLElement {
   header.className = 'app-header';
   header.innerHTML = `
     <div class="brand">
-      <div class="name">Mitchell Lab</div>
+      <img class="logo" src="logo.png" alt="Mitchell Lab" />
       <div class="sub">grader</div>
     </div>
     <h1>Bubble-sheet grading</h1>

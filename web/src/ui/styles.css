@@ -57,13 +57,15 @@ header.app-header .brand {
   padding-right: var(--mds-sp-4);
   border-right: var(--mds-border-hair);
   line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
-header.app-header .brand .name {
-  font-family: var(--mds-serif);
-  font-weight: 600;
-  font-size: var(--mds-text-md);
-  letter-spacing: var(--mds-tracking-tight);
-  color: var(--mds-fg);
+header.app-header .brand .logo {
+  height: 36px;
+  width: auto;
+  display: block;
 }
 header.app-header .brand .sub {
   font-family: var(--mds-sans);
